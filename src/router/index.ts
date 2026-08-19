@@ -1,17 +1,35 @@
 import { createRouter, createWebHistory } from "vue-router";
-import NewPage from "~/views/ExampleNewRouter.vue";
-import Home from "~/views/Home.vue";
+import BackupView from "~/views/BackupView.vue";
+import DashboardView from "~/views/DashboardView.vue";
+import ResultsView from "~/views/ResultsView.vue";
+import SetupView from "~/views/SetupView.vue";
+import VotingView from "~/views/VotingView.vue";
 
 const routes = [
   {
     path: "/",
-    name: "Home",
-    component: Home,
+    name: "Dashboard",
+    component: DashboardView,
   },
   {
-    path: "/about",
-    name: "About",
-    component: NewPage,
+    path: "/setup",
+    name: "Setup",
+    component: SetupView,
+  },
+  {
+    path: "/voting",
+    name: "Voting",
+    component: VotingView,
+  },
+  {
+    path: "/results",
+    name: "Results",
+    component: ResultsView,
+  },
+  {
+    path: "/backup",
+    name: "Backup",
+    component: BackupView,
   },
 ];
 
