@@ -1,14 +1,13 @@
 <script setup lang="ts">
-import { AlertCircle, Lock, Play, Plus, Sparkles } from "lucide-vue-next";
-import { ref } from "vue";
+import { CheckCircle2, Lock, Play, ShieldCheck } from "lucide-vue-next";
+import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import BaseButton from "~/components/common/BaseButton.vue";
 import BaseModal from "~/components/common/BaseModal.vue";
 import ElectionConfigForm from "~/components/setup/ElectionConfigForm.vue";
-import SlateFormModal from "~/components/setup/SlateFormModal.vue";
-import SlateList from "~/components/setup/SlateList.vue";
-import { seedSingleSlateElection } from "~/db/seed";
-import type { Election, Slate } from "~/domain/types";
+
+import type { Election } from "~/domain/types";
+
 import { useElectionStore } from "~/store/electionStore";
 import { useUiStore } from "~/store/uiStore";
 
@@ -16,63 +15,25 @@ const router = useRouter();
 const electionStore = useElectionStore();
 const uiStore = useUiStore();
 
-const showSlateModal = ref(false);
-const slateToEdit = ref<Slate | null>(null);
 const showConfirmOpenModal = ref(false);
+
+onMounted(async () => {
+  if (!electionStore.currentElection || electionStore.slates.length === 0) {
+    await electionStore.loadActiveElection();
+  }
+});
 
 async function handleSaveElection(data: Partial<Election>) {
   try {
     await electionStore.createOrUpdateElection(data);
     uiStore.addToast(
       "success",
-      "Dados Salvos!",
-      "Configurações da eleição atualizadas com sucesso.",
+      "Configuração Salva!",
+      "Os dados da votação foram atualizados com sucesso.",
     );
-  } catch (e: any) {
-    uiStore.addToast("error", "Falha ao salvar", e.message);
-  }
-}
-
-function handleAddSlateClick() {
-  slateToEdit.value = null;
-  showSlateModal.value = true;
-}
-
-function handleEditSlate(slate: Slate) {
-  slateToEdit.value = slate;
-  showSlateModal.value = true;
-}
-
-async function handleSaveSlate(data: any) {
-  try {
-    if (slateToEdit.value) {
-      await electionStore.updateSlate(slateToEdit.value.id, data);
-      uiStore.addToast(
-        "success",
-        "Chapa Atualizada!",
-        `A chapa "${data.name}" foi salva.`,
-      );
-    } else {
-      await electionStore.addSlate(data);
-      uiStore.addToast(
-        "success",
-        "Chapa Cadastrada!",
-        `A chapa "${data.name}" foi adicionada.`,
-      );
-    }
-  } catch (e: any) {
-    uiStore.addToast("error", "Falha na chapa", e.message);
-  }
-}
-
-async function handleRemoveSlate(id: string) {
-  if (confirm("Tem certeza de que deseja remover esta chapa?")) {
-    try {
-      await electionStore.removeSlate(id);
-      uiStore.addToast("info", "Chapa Removida");
-    } catch (e: any) {
-      uiStore.addToast("error", "Falha ao remover", e.message);
-    }
+  } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : "Erro desconhecido";
+    uiStore.addToast("error", "Falha ao salvar", errorMsg);
   }
 }
 
@@ -82,58 +43,39 @@ async function handleOpenElection() {
     showConfirmOpenModal.value = false;
     uiStore.addToast(
       "success",
-      "Eleição Aberta com Sucesso!",
-      "A cabine de votação está pronta para receber votos.",
+      "Votação Aberta com Sucesso!",
+      "A cabine de votação está pronta para receber os votos dos associados.",
     );
     router.push("/voting");
-  } catch (e: any) {
-    uiStore.addToast("error", "Não foi possível abrir a eleição", e.message);
-  }
-}
-
-async function handleLoadSeed() {
-  try {
-    await seedSingleSlateElection();
-    await electionStore.loadActiveElection();
-    uiStore.addToast("success", "Exemplo Carregado com Sucesso!");
-  } catch (e: any) {
-    uiStore.addToast("error", "Erro ao carregar exemplo", e.message);
+  } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : "Erro desconhecido";
+    uiStore.addToast("error", "Não foi possível abrir a votação", errorMsg);
   }
 }
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto space-y-8 py-6">
+  <div class="max-w-3xl mx-auto space-y-8 py-6">
     <!-- Top Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
       <div>
         <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-          Configuração da Eleição
+          Configuração da Votação
         </h1>
         <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">
-          Defina as regras estatutárias, dados da assembleia e cadastre as chapas concorrentes.
+          Informe a quantidade de associados e presentes para iniciar a votação da <strong>Chapa 01</strong>.
         </p>
       </div>
 
       <div class="flex items-center gap-2">
         <BaseButton
-          v-if="!electionStore.currentElection"
-          variant="outline"
-          size="md"
-          @click="handleLoadSeed"
-        >
-          <Sparkles class="w-4 h-4 mr-1 text-amber-500" />
-          Carregar Exemplo
-        </BaseButton>
-
-        <BaseButton
           v-if="electionStore.isDraft"
           variant="success"
           size="lg"
-          class="shadow-md"
+          class="shadow-lg py-3 px-6 text-base font-bold"
           @click="showConfirmOpenModal = true"
         >
-          <Play class="w-5 h-5 mr-1" />
+          <Play class="w-5 h-5 mr-1.5" />
           Abrir Votação Oficial
         </BaseButton>
       </div>
@@ -146,15 +88,44 @@ async function handleLoadSeed() {
     >
       <Lock class="w-5 h-5 shrink-0 mt-0.5" />
       <div>
-        <span class="font-bold block">Modo de Leitura (Eleição em Andamento ou Encerrada)</span>
-        Os dados e chapas não podem mais ser alterados para assegurar a integridade do pleito.
+        <span class="font-bold block">Votação em Andamento ou Encerrada</span>
+        Os parâmetros foram congelados para garantir a lisura do pleito.
       </div>
     </div>
 
-    <!-- 1. Dados Gerais da Eleição -->
-    <div class="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
+    <!-- Card 1: Chapa 01 Ativa -->
+    <div class="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 flex items-center justify-center bg-emerald-600 text-white rounded-2xl font-black text-xl shadow-sm">
+            01
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                Chapa 01
+              </h2>
+              <span class="px-2.5 py-0.5 text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 rounded-full">
+                Chapa Única
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Candidatura oficial da Mesa Diretora para aprovação na assembleia.
+            </p>
+          </div>
+        </div>
+
+        <div class="hidden sm:flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-xl">
+          <CheckCircle2 class="w-4 h-4 text-emerald-500" />
+          Opções: SIM ou NÃO
+        </div>
+      </div>
+    </div>
+
+    <!-- Card 2: 2 Inputs de Configuração -->
+    <div class="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
       <h2 class="text-lg font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">
-        1. Dados Gerais e Regras de Votação
+        Dados de Quórum da Votação
       </h2>
 
       <ElectionConfigForm
@@ -164,72 +135,26 @@ async function handleLoadSeed() {
       />
     </div>
 
-    <!-- 2. Chapas Concorrentes -->
-    <div class="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-6">
-      <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-        <div>
-          <h2 class="text-lg font-bold text-slate-900 dark:text-white">
-            2. Chapas & Integrantes da Mesa Diretora
-          </h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">
-            Cadastre os membros que compõem cada chapa (Presidente, Vice, Secretários, Tesoureiros, etc.).
-          </p>
-        </div>
-
-        <BaseButton
-          v-if="electionStore.isDraft || !electionStore.currentElection"
-          variant="primary"
-          size="md"
-          @click="handleAddSlateClick"
-        >
-          <Plus class="w-4 h-4 mr-1" />
-          Adicionar Chapa
-        </BaseButton>
-      </div>
-
-      <div v-if="electionStore.slates.length === 0" class="text-center py-10 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-        <p class="text-sm font-semibold text-slate-600 dark:text-slate-400">
-          Nenhuma chapa cadastrada até o momento.
-        </p>
-        <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">
-          Clique em "Adicionar Chapa" para cadastrar os concorrentes.
-        </p>
-      </div>
-
-      <SlateList
-        v-else
-        :slates="electionStore.slates"
-        :disabled="!electionStore.isDraft && !!electionStore.currentElection"
-        @edit="handleEditSlate"
-        @remove="handleRemoveSlate"
-      />
-    </div>
-
-    <!-- Modal de Chapa -->
-    <SlateFormModal
-      v-model="showSlateModal"
-      :slate-to-edit="slateToEdit"
-      @save="handleSaveSlate"
-    />
-
     <!-- Modal de Confirmação de Abertura -->
     <BaseModal
       v-model="showConfirmOpenModal"
-      title="Confirmar Abertura da Eleição?"
-      description="Esta ação iniciará o pleito e travará a edição de dados e chapas."
+      title="Confirmar Abertura da Votação?"
+      description="Esta ação iniciará o pleito da Chapa 01 e liberará a cabine para os associados."
       max-width="md"
     >
       <div class="space-y-4">
-        <div class="p-4 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 space-y-1">
-          <p class="font-bold">✓ Checklist de Validação:</p>
-          <p>• Associação: {{ electionStore.currentElection?.associationName }}</p>
-          <p>• Modalidade: {{ electionStore.currentElection?.mode === 'SINGLE_SLATE_APPROVAL' ? 'Chapa Única' : 'Múltiplas Chapas' }}</p>
-          <p>• Chapas Cadastradas: {{ electionStore.slates.length }} chapa(s)</p>
-          <p>• Quórum: {{ electionStore.currentElection?.quorumBasis }}</p>
+        <div class="p-4 bg-emerald-50 dark:bg-emerald-950/60 rounded-xl border border-emerald-200 dark:border-emerald-800 text-sm text-emerald-900 dark:text-emerald-200 space-y-1.5">
+          <p class="font-bold flex items-center gap-1.5">
+            <ShieldCheck class="w-4 h-4" /> Resumo da Votação:
+          </p>
+          <p>• Chapa Concorrente: <strong>Chapa 01</strong></p>
+          <p>• Total na Associação: <strong>{{ electionStore.currentElection?.totalMembers || 100 }} associados</strong></p>
+          <p>• Presentes na Votação: <strong>{{ electionStore.currentElection?.presentMembers || 50 }} associados</strong></p>
+          <p>• Opções da Cédula: <strong>SIM / NÃO</strong></p>
         </div>
 
         <p class="text-xs text-slate-500 dark:text-slate-400">
-          Ao abrir a eleição, a cabine de votação estará liberada para os associados votarem.
+          Ao confirmar, a urna eletrônica será inicializada e o primeiro votante poderá votar.
         </p>
       </div>
 

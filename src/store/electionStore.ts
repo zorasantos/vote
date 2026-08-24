@@ -53,16 +53,55 @@ export const useElectionStore = defineStore("election", () => {
     return hash;
   }
 
+  async function ensureDefaultSlate(electionId: string): Promise<Slate> {
+    const existing = await db.slates
+      .where("electionId")
+      .equals(electionId)
+      .first();
+    if (existing) return existing;
+
+    const defaultSlate: Slate = {
+      id: crypto.randomUUID(),
+      electionId,
+      number: "01",
+      name: "Chapa 01",
+      slogan: "Chapa Oficial",
+      members: [],
+      createdAt: new Date().toISOString(),
+    };
+    await db.slates.add(defaultSlate);
+    return defaultSlate;
+  }
+
   async function loadActiveElection(): Promise<void> {
     isLoading.value = true;
     error.value = null;
     try {
       const allElections = await db.elections.toArray();
       if (allElections.length === 0) {
-        currentElection.value = null;
-        slates.value = [];
+        // Cria automaticamente eleição padrão simplificada
+        const now = new Date().toISOString();
+        const newElection: Election = {
+          id: crypto.randomUUID(),
+          title: "Votação da Mesa Diretora",
+          associationName: "Associação de Moradores",
+          date: now.split("T")[0],
+          status: "DRAFT",
+          mode: "SINGLE_SLATE_APPROVAL",
+          quorumBasis: "VALID_VOTES",
+          allowBlankVote: false,
+          totalMembers: 100,
+          presentMembers: 50,
+          createdAt: now,
+        };
+        await db.elections.add(newElection);
+        const defaultSlate = await ensureDefaultSlate(newElection.id);
+
+        currentElection.value = newElection;
+        slates.value = [defaultSlate];
         votes.value = [];
         voters.value = [];
+        await updateHash();
         return;
       }
 
@@ -72,10 +111,17 @@ export const useElectionStore = defineStore("election", () => {
         allElections[allElections.length - 1];
 
       currentElection.value = active;
-      slates.value = await db.slates
+      let loadedSlates = await db.slates
         .where("electionId")
         .equals(active.id)
         .toArray();
+
+      if (loadedSlates.length === 0) {
+        const defaultSlate = await ensureDefaultSlate(active.id);
+        loadedSlates = [defaultSlate];
+      }
+
+      slates.value = loadedSlates;
       votes.value = await db.votes
         .where("electionId")
         .equals(active.id)
@@ -106,17 +152,21 @@ export const useElectionStore = defineStore("election", () => {
       if (!currentElection.value) {
         const newElection: Election = {
           id: crypto.randomUUID(),
-          title: data.title || "",
-          associationName: data.associationName || "",
+          title: data.title || "Votação da Mesa Diretora",
+          associationName: data.associationName || "Associação de Moradores",
           date: data.date || now.split("T")[0],
           status: "DRAFT",
-          mode: data.mode || "SINGLE_SLATE_APPROVAL",
-          quorumBasis: data.quorumBasis || "VALID_VOTES",
-          allowBlankVote: data.allowBlankVote ?? true,
+          mode: "SINGLE_SLATE_APPROVAL",
+          quorumBasis: "VALID_VOTES",
+          allowBlankVote: false,
+          totalMembers: data.totalMembers ?? 100,
+          presentMembers: data.presentMembers ?? 50,
           createdAt: now,
         };
         await db.elections.add(newElection);
+        const defaultSlate = await ensureDefaultSlate(newElection.id);
         currentElection.value = newElection;
+        slates.value = [defaultSlate];
       } else {
         if (currentElection.value.status === "CLOSED") {
           throw new Error("Eleição encerrada não pode ser modificada.");
@@ -124,9 +174,15 @@ export const useElectionStore = defineStore("election", () => {
         const updated: Election = {
           ...currentElection.value,
           ...data,
+          mode: "SINGLE_SLATE_APPROVAL",
+          allowBlankVote: false,
         };
         await db.elections.put(updated);
         currentElection.value = updated;
+        if (slates.value.length === 0) {
+          const defaultSlate = await ensureDefaultSlate(updated.id);
+          slates.value = [defaultSlate];
+        }
       }
       await updateHash();
       return currentElection.value;
@@ -169,7 +225,7 @@ export const useElectionStore = defineStore("election", () => {
     slateId: string,
     slateData: Partial<Slate>,
   ): Promise<void> {
-    if (!currentElection.value || currentElection.value.status !== "DRAFT") {
+    if (currentElection.value?.status !== "DRAFT") {
       throw new Error(
         "Chapas só podem ser editadas enquanto a eleição estiver em rascunho.",
       );
@@ -185,7 +241,7 @@ export const useElectionStore = defineStore("election", () => {
   }
 
   async function removeSlate(slateId: string): Promise<void> {
-    if (!currentElection.value || currentElection.value.status !== "DRAFT") {
+    if (currentElection.value?.status !== "DRAFT") {
       throw new Error("Chapas só podem ser removidas em rascunho.");
     }
 
@@ -195,7 +251,19 @@ export const useElectionStore = defineStore("election", () => {
   }
 
   async function openElection(): Promise<void> {
+    if (!currentElection.value) {
+      await createOrUpdateElection({
+        totalMembers: 100,
+        presentMembers: 50,
+      });
+    }
+
     if (!currentElection.value) throw new Error("Nenhuma eleição selecionada.");
+
+    if (slates.value.length === 0) {
+      const defaultSlate = await ensureDefaultSlate(currentElection.value.id);
+      slates.value = [defaultSlate];
+    }
 
     validateElectionForOpening(currentElection.value, slates.value);
 

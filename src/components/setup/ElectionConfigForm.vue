@@ -1,7 +1,8 @@
 <script setup lang="ts">
+import { Save, UserCheck, Users } from "lucide-vue-next";
 import { reactive, watch } from "vue";
 import BaseButton from "~/components/common/BaseButton.vue";
-import type { Election, QuorumBasis, VotingMode } from "~/domain/types";
+import type { Election } from "~/domain/types";
 
 const props = defineProps<{
   election: Election | null;
@@ -11,31 +12,19 @@ const props = defineProps<{
 const emit = defineEmits<(e: "save", data: Partial<Election>) => void>();
 
 const form = reactive<{
-  associationName: string;
-  title: string;
-  date: string;
-  mode: VotingMode;
-  quorumBasis: QuorumBasis;
-  allowBlankVote: boolean;
+  totalMembers: number;
+  presentMembers: number;
 }>({
-  associationName: props.election?.associationName || "",
-  title: props.election?.title || "",
-  date: props.election?.date || new Date().toISOString().split("T")[0],
-  mode: props.election?.mode || "SINGLE_SLATE_APPROVAL",
-  quorumBasis: props.election?.quorumBasis || "VALID_VOTES",
-  allowBlankVote: props.election?.allowBlankVote ?? true,
+  totalMembers: props.election?.totalMembers ?? 100,
+  presentMembers: props.election?.presentMembers ?? 50,
 });
 
 watch(
   () => props.election,
   (newVal) => {
     if (newVal) {
-      form.associationName = newVal.associationName;
-      form.title = newVal.title;
-      form.date = newVal.date;
-      form.mode = newVal.mode;
-      form.quorumBasis = newVal.quorumBasis;
-      form.allowBlankVote = newVal.allowBlankVote;
+      form.totalMembers = newVal.totalMembers ?? 100;
+      form.presentMembers = newVal.presentMembers ?? 50;
     }
   },
   { deep: true },
@@ -43,12 +32,13 @@ watch(
 
 function handleSubmit() {
   emit("save", {
-    associationName: form.associationName.trim(),
-    title: form.title.trim(),
-    date: form.date,
-    mode: form.mode,
-    quorumBasis: form.quorumBasis,
-    allowBlankVote: form.allowBlankVote,
+    totalMembers: Number(form.totalMembers),
+    presentMembers: Number(form.presentMembers),
+    mode: "SINGLE_SLATE_APPROVAL",
+    allowBlankVote: false,
+    quorumBasis: "VALID_VOTES",
+    title: "Votação da Mesa Diretora — Chapa 01",
+    associationName: "Associação de Moradores",
   });
 }
 </script>
@@ -56,147 +46,71 @@ function handleSubmit() {
 <template>
   <form @submit.prevent="handleSubmit" class="space-y-6">
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-      <!-- Razão Social / Nome da Associação -->
-      <div class="sm:col-span-2">
+      <!-- Input 1: Quantidade de pessoas na associação -->
+      <div class="p-5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
         <label
-          for="associationName"
-          class="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5"
+          for="totalMembers"
+          class="flex items-center gap-2 text-base sm:text-lg font-black text-slate-900 dark:text-white mb-2"
         >
-          Nome da Associação / Entidade <span class="text-rose-500">*</span>
+          <div class="p-2 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-xl">
+            <Users class="w-5 h-5" />
+          </div>
+          1. Pessoas na Associação
         </label>
-        <input
-          id="associationName"
-          v-model="form.associationName"
-          type="text"
-          required
-          :disabled="disabled"
-          placeholder="Ex: Associação dos Moradores do Bairro X"
-          class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-400 disabled:bg-slate-100 dark:disabled:bg-slate-800 transition-colors"
-        />
-      </div>
-
-      <!-- Título da Eleição -->
-      <div class="sm:col-span-2">
-        <label
-          for="title"
-          class="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5"
-        >
-          Título do Pleito / Eleição <span class="text-rose-500">*</span>
-        </label>
-        <input
-          id="title"
-          v-model="form.title"
-          type="text"
-          required
-          :disabled="disabled"
-          placeholder="Ex: Eleição da Mesa Diretora — Gestão 2026/2028"
-          class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-400 disabled:bg-slate-100 dark:disabled:bg-slate-800 transition-colors"
-        />
-      </div>
-
-      <!-- Data da Eleição -->
-      <div>
-        <label
-          for="date"
-          class="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5"
-        >
-          Data de Realização <span class="text-rose-500">*</span>
-        </label>
-        <input
-          id="date"
-          v-model="form.date"
-          type="date"
-          required
-          :disabled="disabled"
-          class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-400 disabled:bg-slate-100 dark:disabled:bg-slate-800 transition-colors"
-        />
-      </div>
-
-      <!-- Modo de Votação -->
-      <div>
-        <label
-          for="mode"
-          class="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5"
-        >
-          Modalidade do Pleito <span class="text-rose-500">*</span>
-        </label>
-        <select
-          id="mode"
-          v-model="form.mode"
-          :disabled="disabled"
-          class="w-full px-4 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-slate-400 disabled:bg-slate-100 dark:disabled:bg-slate-800 transition-colors cursor-pointer"
-        >
-          <option value="SINGLE_SLATE_APPROVAL">Chapa Única (Votação SIM / NÃO)</option>
-          <option value="MULTIPLE_SLATE_CHOICE">Múltiplas Chapas (Escolha Nominal)</option>
-        </select>
-      </div>
-
-      <!-- Base de Quórum da Maioria Absoluta -->
-      <div class="sm:col-span-2 p-4 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700">
-        <label class="block text-sm font-bold text-slate-900 dark:text-slate-100 mb-1">
-          Regra de Maioria Absoluta (50% + 1)
-        </label>
-        <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">
-          Selecione como o estatuto da sua associação define o denominador da maioria absoluta:
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">
+          Quantidade total de membros / associados cadastrados na entidade.
         </p>
-        <div class="space-y-2">
-          <label class="flex items-start gap-3 cursor-pointer">
-            <input
-              type="radio"
-              value="VALID_VOTES"
-              v-model="form.quorumBasis"
-              :disabled="disabled"
-              class="mt-1 text-slate-900 focus:ring-slate-900 cursor-pointer"
-            />
-            <div>
-              <span class="text-sm font-medium text-slate-800 dark:text-slate-200">
-                Apenas Votos Válidos (Recomendado / Padrão Estatutário)
-              </span>
-              <p class="text-xs text-slate-500 dark:text-slate-400">
-                Considera apenas os votos SIM e NÃO (ou nominais em chapas). Votos em branco não entram no cálculo da maioria.
-              </p>
-            </div>
-          </label>
-
-          <label class="flex items-start gap-3 cursor-pointer">
-            <input
-              type="radio"
-              value="TOTAL_VOTES"
-              v-model="form.quorumBasis"
-              :disabled="disabled"
-              class="mt-1 text-slate-900 focus:ring-slate-900 cursor-pointer"
-            />
-            <div>
-              <span class="text-sm font-medium text-slate-800 dark:text-slate-200">
-                Total de Votos Depositados na Urna
-              </span>
-              <p class="text-xs text-slate-500 dark:text-slate-400">
-                Considera todos os votos, inclusive votos em branco, elevando o número necessário para 50% + 1.
-              </p>
-            </div>
-          </label>
-        </div>
+        <input
+          id="totalMembers"
+          v-model.number="form.totalMembers"
+          type="number"
+          min="1"
+          required
+          :disabled="disabled"
+          placeholder="Ex: 100"
+          class="w-full px-4 py-3 text-lg font-bold rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 transition-colors"
+        />
       </div>
 
-      <!-- Voto em Branco -->
-      <div class="sm:col-span-2">
-        <label class="flex items-center gap-3 cursor-pointer">
-          <input
-            type="checkbox"
-            v-model="form.allowBlankVote"
-            :disabled="disabled"
-            class="w-4 h-4 text-slate-900 rounded border-slate-300 focus:ring-slate-900 cursor-pointer"
-          />
-          <span class="text-sm font-medium text-slate-800 dark:text-slate-200">
-            Habilitar botão de "Voto em Branco" na cabine de votação
-          </span>
+      <!-- Input 2: Quantidade de pessoas presentes na votação -->
+      <div class="p-5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
+        <label
+          for="presentMembers"
+          class="flex items-center gap-2 text-base sm:text-lg font-black text-slate-900 dark:text-white mb-2"
+        >
+          <div class="p-2 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-xl">
+            <UserCheck class="w-5 h-5" />
+          </div>
+          2. Pessoas Presentes na Votação
         </label>
+        <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mb-3">
+          Quantidade de associados presentes na assembleia aptos a votar.
+        </p>
+        <input
+          id="presentMembers"
+          v-model.number="form.presentMembers"
+          type="number"
+          min="1"
+          required
+          :disabled="disabled"
+          placeholder="Ex: 50"
+          class="w-full px-4 py-3 text-lg font-bold rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 transition-colors"
+        />
       </div>
     </div>
 
-    <div v-if="!disabled" class="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-800">
-      <BaseButton type="submit" variant="primary" size="lg">
-        Salvar Dados da Eleição
+    <!-- Alerta Informativo de Simplicidade -->
+    <div class="p-4 bg-blue-50 dark:bg-blue-950/50 rounded-2xl border border-blue-200 dark:border-blue-800 text-sm text-blue-900 dark:text-blue-200 flex items-center justify-between">
+      <div>
+        <span class="font-bold block">✓ Votação com Chapa 01 pré-definida</span>
+        <span class="text-xs opacity-90">As cédulas conterão unicamente as opções <strong>SIM</strong> e <strong>NÃO</strong> para a Chapa 01.</span>
+      </div>
+    </div>
+
+    <div v-if="!disabled" class="flex justify-end pt-2">
+      <BaseButton type="submit" variant="primary" size="lg" class="px-8 py-3.5 text-base font-bold shadow-md">
+        <Save class="w-5 h-5 mr-2" />
+        Salvar Configuração
       </BaseButton>
     </div>
   </form>

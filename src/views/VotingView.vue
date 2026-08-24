@@ -14,7 +14,6 @@ import { useRouter } from "vue-router";
 import BaseButton from "~/components/common/BaseButton.vue";
 import BaseModal from "~/components/common/BaseModal.vue";
 import PinModal from "~/components/common/PinModal.vue";
-import MultiSlateBallot from "~/components/voting/MultiSlateBallot.vue";
 import SingleSlateBallot from "~/components/voting/SingleSlateBallot.vue";
 import VoteConfirmation from "~/components/voting/VoteConfirmation.vue";
 import VoteSuccess from "~/components/voting/VoteSuccess.vue";
@@ -60,9 +59,10 @@ async function handleConfirmVote() {
       await electionStore.registerVote(choice);
       uiStore.playBeep("vote");
     });
-  } catch (e: any) {
+  } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : "Erro desconhecido";
     uiStore.playBeep("error");
-    uiStore.addToast("error", "Falha ao registrar voto", e.message);
+    uiStore.addToast("error", "Falha ao registrar voto", errorMsg);
   } finally {
     isSaving.value = false;
   }
@@ -154,8 +154,9 @@ async function handleCloseElectionConfirmed() {
       "Redirecionando para a tela de apuração e emissão da ata.",
     );
     router.push("/results");
-  } catch (e: any) {
-    uiStore.addToast("error", "Erro ao encerrar", e.message);
+  } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : "Erro desconhecido";
+    uiStore.addToast("error", "Erro ao encerrar", errorMsg);
   }
 }
 </script>
@@ -251,19 +252,9 @@ async function handleCloseElectionConfirmed() {
 
       <!-- 2. Estado SELECTING: Escolha na Cédula -->
       <div v-else-if="step === 'SELECTING'" class="w-full max-w-4xl">
-        <!-- Chapa Única -->
         <SingleSlateBallot
-          v-if="isSingleSlate && electionStore.slates[0]"
-          :slate="electionStore.slates[0]"
-          :allow-blank-vote="electionStore.currentElection?.allowBlankVote"
-          @select="handleSelectChoice"
-        />
-
-        <!-- Múltiplas Chapas -->
-        <MultiSlateBallot
-          v-else-if="!isSingleSlate"
-          :slates="electionStore.slates"
-          :allow-blank-vote="electionStore.currentElection?.allowBlankVote"
+          :slate="electionStore.slates[0] || { id: 'slate-01', electionId: '', number: '01', name: 'Chapa 01', members: [], createdAt: '' }"
+          :allow-blank-vote="false"
           @select="handleSelectChoice"
         />
       </div>

@@ -24,13 +24,15 @@ export async function seedSingleSlateElection(): Promise<{
 
   const election: Election = {
     id: electionId,
-    title: "Eleição da Mesa Diretora — Gestão 2026/2028",
-    associationName: "Associação Comunitária Viva Bem",
+    title: "Votação da Mesa Diretora",
+    associationName: "Associação de Moradores",
     date: new Date().toISOString().split("T")[0],
     status: "DRAFT",
     mode: "SINGLE_SLATE_APPROVAL",
     quorumBasis: "VALID_VOTES",
-    allowBlankVote: true,
+    allowBlankVote: false,
+    totalMembers: 100,
+    presentMembers: 60,
     createdAt: now,
   };
 
@@ -38,55 +40,9 @@ export async function seedSingleSlateElection(): Promise<{
     id: crypto.randomUUID(),
     electionId,
     number: "01",
-    name: "Chapa 1 — Renovação, Ética & Transparência",
-    slogan: "Unidos por uma gestão participativa e democrática.",
-    members: [
-      {
-        id: crypto.randomUUID(),
-        role: "Presidente",
-        name: "João Carlos da Silva",
-      },
-      {
-        id: crypto.randomUUID(),
-        role: "Vice-Presidente",
-        name: "Maria Helena dos Santos",
-      },
-      {
-        id: crypto.randomUUID(),
-        role: "1º Secretário",
-        name: "Pedro Henrique Oliveira",
-      },
-      {
-        id: crypto.randomUUID(),
-        role: "2º Secretário",
-        name: "Juliana Beatriz Costa",
-      },
-      {
-        id: crypto.randomUUID(),
-        role: "1º Tesoureiro",
-        name: "Carlos Eduardo Souza",
-      },
-      {
-        id: crypto.randomUUID(),
-        role: "2º Tesoureiro",
-        name: "Fernanda Lima Rocha",
-      },
-      {
-        id: crypto.randomUUID(),
-        role: "Conselho Fiscal — Titular",
-        name: "Antônio Ferreira Lima",
-      },
-      {
-        id: crypto.randomUUID(),
-        role: "Conselho Fiscal — Titular",
-        name: "Cláudia Regina Mendes",
-      },
-      {
-        id: crypto.randomUUID(),
-        role: "Conselho Fiscal — Titular",
-        name: "Roberto Gonçalves Ramos",
-      },
-    ],
+    name: "Chapa 01",
+    slogan: "Chapa Oficial de Candidatura",
+    members: [],
     createdAt: now,
   };
 

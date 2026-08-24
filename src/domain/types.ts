@@ -36,12 +36,14 @@ export interface Slate {
 export interface Election {
   id: string;
   title: string; // Ex: "Eleição da Mesa Diretora — Biênio 2026/2028"
-  associationName: string; // Ex: "Associação dos Moradores do Bairro Jardim das Flores"
+  associationName: string; // Ex: "Associação dos Moradores"
   date: string; // Data do pleito (YYYY-MM-DD)
   status: ElectionStatus;
   mode: VotingMode;
   quorumBasis: QuorumBasis;
   allowBlankVote: boolean; // Define se a opção "Voto em Branco" estará disponível na cabine
+  totalMembers?: number; // Quantidade de pessoas na associação
+  presentMembers?: number; // Quantidade de pessoas presentes na votação
   securityPinHash?: string; // SHA-256 do PIN operacional do mesário
   createdAt: string;
   openedAt?: string;
@@ -99,6 +101,8 @@ export interface ElectionResult {
   calculatedAt: string;
   dataHash: string; // Hash SHA-256 canônico de auditoria
 
+  totalMembers?: number;
+  presentMembers?: number;
   totalVotes: number;
   validVotes: number;
   blankVotes: number;

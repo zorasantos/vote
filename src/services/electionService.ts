@@ -24,24 +24,21 @@ export function validateElectionForOpening(
     );
   }
 
-  if (!election.associationName || !election.associationName.trim()) {
-    throw new Error("O nome da associação é obrigatório para abrir a votação.");
+  if (election.totalMembers !== undefined && election.totalMembers <= 0) {
+    throw new Error("Informe a quantidade total de pessoas na associação.");
   }
 
-  if (!election.title || !election.title.trim()) {
-    throw new Error("O título da eleição é obrigatório para abrir a votação.");
-  }
-
-  if (!election.date || !election.date.trim()) {
-    throw new Error("A data da eleição deve estar devidamente definida.");
+  if (election.presentMembers !== undefined && election.presentMembers <= 0) {
+    throw new Error("Informe a quantidade de pessoas presentes na votação.");
   }
 
   if (
-    election.quorumBasis !== "VALID_VOTES" &&
-    election.quorumBasis !== "TOTAL_VOTES"
+    election.totalMembers !== undefined &&
+    election.presentMembers !== undefined &&
+    election.presentMembers > election.totalMembers
   ) {
     throw new Error(
-      "A base de quórum de maioria absoluta deve ser definida como VALID_VOTES ou TOTAL_VOTES.",
+      "A quantidade de presentes não pode ser maior que o total de pessoas na associação.",
     );
   }
 
@@ -63,33 +60,27 @@ export function validateElectionForOpening(
         `O modo de múltiplas chapas exige pelo menos 2 chapas cadastradas. Encontradas: ${slates.length}.`,
       );
     }
-  } else {
-    throw new Error("Modo de votação inválido ou não suportado.");
   }
 
   for (const slate of slates) {
-    if (!slate.name || !slate.name.trim()) {
+    if (!slate.name?.trim()) {
       throw new Error(
         `A chapa número "${slate.number || "N/A"}" precisa ter um nome preenchido.`,
       );
     }
 
-    if (!slate.members || slate.members.length === 0) {
-      throw new Error(
-        `A chapa "${slate.name}" precisa de pelo menos um integrante (ex: Presidente) cadastrado.`,
-      );
-    }
-
-    for (const member of slate.members) {
-      if (!member.name || !member.name.trim()) {
-        throw new Error(
-          `Existe um integrante sem nome cadastrado na chapa "${slate.name}".`,
-        );
-      }
-      if (!member.role || !member.role.trim()) {
-        throw new Error(
-          `O cargo do integrante "${member.name}" na chapa "${slate.name}" não foi preenchido.`,
-        );
+    if (slate.members && slate.members.length > 0) {
+      for (const member of slate.members) {
+        if (!member.name?.trim()) {
+          throw new Error(
+            `Existe um integrante sem nome cadastrado na chapa "${slate.name}".`,
+          );
+        }
+        if (!member.role?.trim()) {
+          throw new Error(
+            `O cargo do integrante "${member.name}" na chapa "${slate.name}" não foi preenchido.`,
+          );
+        }
       }
     }
   }
@@ -145,7 +136,7 @@ export function calculateElectionResult(
   let blankVotes = 0;
   let validVotes = 0;
 
-  if (election.mode === "SINGLE_SLATE_APPROVAL") {
+  if (election.mode === "SINGLE_SLATE_APPROVAL" || !election.mode) {
     let yesVotes = 0;
     let noVotes = 0;
 
@@ -161,35 +152,41 @@ export function calculateElectionResult(
 
     validVotes = yesVotes + noVotes;
     const baseVotes =
-      election.quorumBasis === "VALID_VOTES" ? validVotes : totalVotes;
+      election.quorumBasis === "TOTAL_VOTES" ? totalVotes : validVotes;
     const requiredVotesToWin =
       baseVotes > 0 ? Math.floor(baseVotes / 2) + 1 : 1;
-    const isElected = yesVotes >= requiredVotesToWin && baseVotes > 0;
-    const targetSlate = slates[0];
+    const isElected =
+      yesVotes >= requiredVotesToWin && yesVotes > noVotes && baseVotes > 0;
+    const targetSlate = slates[0] || {
+      id: "slate-01",
+      electionId: election.id,
+      number: "01",
+      name: "Chapa 01",
+      members: [],
+      createdAt: new Date().toISOString(),
+    };
 
-    const yesDenominator =
-      election.quorumBasis === "VALID_VOTES"
-        ? validVotes || 1
-        : totalVotes || 1;
-    const yesPct = totalVotes > 0 ? (yesVotes / yesDenominator) * 100 : 0;
-    const noPct = totalVotes > 0 ? (noVotes / yesDenominator) * 100 : 0;
-    const blankPct =
-      totalVotes > 0 ? (blankVotes / (totalVotes || 1)) * 100 : 0;
+    const divisor = baseVotes > 0 ? baseVotes : 1;
+    const yesPct = baseVotes > 0 ? (yesVotes / divisor) * 100 : 0;
+    const noPct = baseVotes > 0 ? (noVotes / divisor) * 100 : 0;
+    const blankPct = totalVotes > 0 ? (blankVotes / totalVotes) * 100 : 0;
 
     const proclamationText = isElected
-      ? `CHAPA ELEITA: A "${targetSlate?.name || "Chapa"}" obteve ${yesVotes} votos favoráveis (${yesPct.toFixed(1)}%), atingindo a maioria absoluta necessária de ${requiredVotesToWin} votos.`
-      : `CHAPA NÃO ELEITA: A "${targetSlate?.name || "Chapa"}" obteve ${yesVotes} votos favoráveis, não atingindo a maioria absoluta mínima de ${requiredVotesToWin} votos exigida pelo estatuto.`;
+      ? `CHAPA 01 APROVADA: A Chapa 01 obteve ${yesVotes} voto(s) SIM (${yesPct.toFixed(1)}%), atingindo a maioria absoluta dos votos válidos (${requiredVotesToWin} votos necessários).`
+      : `CHAPA 01 NÃO APROVADA: A Chapa 01 obteve ${yesVotes} voto(s) SIM (${yesPct.toFixed(1)}%), não atingindo a maioria absoluta mínima de ${requiredVotesToWin} votos válidos.`;
 
     return {
       electionId: election.id,
       calculatedAt: new Date().toISOString(),
       dataHash: "",
+      totalMembers: election.totalMembers,
+      presentMembers: election.presentMembers,
       totalVotes,
       validVotes,
       blankVotes,
       quorumBasis: election.quorumBasis,
       requiredVotesToWin,
-      mode: election.mode,
+      mode: "SINGLE_SLATE_APPROVAL",
       singleSlateResult: {
         slate: targetSlate,
         yesVotes,
@@ -202,7 +199,7 @@ export function calculateElectionResult(
       },
     };
   } else {
-    // Modo Múltiplas Chapas
+    // Modo Múltiplas Chapas (MULTIPLE_SLATE_CHOICE)
     const tallyMap = new Map<string, number>();
     for (const slate of slates) {
       tallyMap.set(slate.id, 0);
@@ -219,18 +216,15 @@ export function calculateElectionResult(
     }
 
     const baseVotes =
-      election.quorumBasis === "VALID_VOTES" ? validVotes : totalVotes;
+      election.quorumBasis === "TOTAL_VOTES" ? totalVotes : validVotes;
     const requiredVotesToWin =
       baseVotes > 0 ? Math.floor(baseVotes / 2) + 1 : 1;
 
+    const divisor = baseVotes > 0 ? baseVotes : 1;
     const slatesTally = slates
       .map((slate) => {
         const vCount = tallyMap.get(slate.id) || 0;
-        const divisor =
-          election.quorumBasis === "VALID_VOTES"
-            ? validVotes || 1
-            : totalVotes || 1;
-        const percentage = totalVotes > 0 ? (vCount / divisor) * 100 : 0;
+        const percentage = baseVotes > 0 ? (vCount / divisor) * 100 : 0;
         return {
           slate,
           votes: vCount,
@@ -254,12 +248,14 @@ export function calculateElectionResult(
       electionId: election.id,
       calculatedAt: new Date().toISOString(),
       dataHash: "",
+      totalMembers: election.totalMembers,
+      presentMembers: election.presentMembers,
       totalVotes,
       validVotes,
       blankVotes,
       quorumBasis: election.quorumBasis,
       requiredVotesToWin,
-      mode: election.mode,
+      mode: "MULTIPLE_SLATE_CHOICE",
       multiSlateResult: {
         slatesTally,
         electedSlate: isElected && leader ? leader.slate : null,

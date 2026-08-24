@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import type { Election, ElectionResult, Slate } from "~/domain/types";
+import type { Election, ElectionResult } from "~/domain/types";
 
 interface ExtendedJsPDF extends jsPDF {
   lastAutoTable?: {
@@ -10,7 +10,6 @@ interface ExtendedJsPDF extends jsPDF {
 
 export function generateElectionReportPdf(
   election: Election,
-  slates: Slate[],
   result: ElectionResult,
 ): jsPDF {
   const doc: ExtendedJsPDF = new jsPDF({
@@ -20,13 +19,13 @@ export function generateElectionReportPdf(
   });
 
   const pageWidth = doc.internal.pageSize.getWidth();
-  let currentY = 18;
+  let currentY = 20;
 
   // 1. Cabeçalho Institucional
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
   doc.setTextColor(15, 23, 42); // Slate 900
-  doc.text(election.associationName.toUpperCase(), pageWidth / 2, currentY, {
+  doc.text("ASSOCIAÇÃO DE MORADORES", pageWidth / 2, currentY, {
     align: "center",
   });
 
@@ -34,19 +33,13 @@ export function generateElectionReportPdf(
   doc.setFontSize(12);
   doc.setTextColor(30, 41, 59); // Slate 800
   doc.text(
-    "ATA OFICIAL DE APURAÇÃO E PROCLAMAÇÃO DE RESULTADOS",
+    "ATA OFICIAL DE APURAÇÃO DA VOTAÇÃO — CHAPA 01",
     pageWidth / 2,
     currentY,
     {
       align: "center",
     },
   );
-
-  currentY += 6;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.setTextColor(71, 85, 105); // Slate 600
-  doc.text(election.title, pageWidth / 2, currentY, { align: "center" });
 
   currentY += 4;
   doc.setDrawColor(203, 213, 225); // Slate 300
@@ -59,90 +52,71 @@ export function generateElectionReportPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(15, 23, 42);
-  doc.text("1. DADOS GERAIS DO PLEITO", 15, currentY);
+  doc.text("1. DADOS GERAIS DA ASSEMBLEIA", 15, currentY);
 
   currentY += 5;
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.setFontSize(9.5);
   doc.setTextColor(51, 65, 85);
 
   const preambuloLines = [
-    `Data de Realização: ${election.date}`,
-    `Modalidade: ${election.mode === "SINGLE_SLATE_APPROVAL" ? "Chapa Única (Aprovação SIM / NÃO)" : "Múltiplas Chapas"}`,
-    `Base Estatutária de Quórum: ${election.quorumBasis === "VALID_VOTES" ? "Maioria Absoluta sobre Votos Válidos (50% + 1)" : "Maioria Absoluta sobre o Total de Votos Depositados (50% + 1)"}`,
-    `Horário de Abertura: ${election.openedAt ? new Date(election.openedAt).toLocaleTimeString("pt-BR") : "Não registrado"} | Horário de Encerramento: ${election.closedAt ? new Date(election.closedAt).toLocaleTimeString("pt-BR") : "Em andamento"}`,
-    `Total Geral de Votos Depositados: ${result.totalVotes} | Votos Válidos: ${result.validVotes} | Votos em Branco: ${result.blankVotes}`,
-    `Votos Mínimos Exigidos para Eleição (50% + 1): ${result.requiredVotesToWin} voto(s)`,
+    `Data da Realização: ${election.date || new Date().toISOString().split("T")[0]}`,
+    `Candidatura Submetida: Chapa 01 (Votação SIM / NÃO)`,
+    `Quantidade de Pessoas na Associação (Total de Associados): ${result.totalMembers || election.totalMembers || 0}`,
+    `Quantidade de Pessoas Presentes na Votação: ${result.presentMembers || election.presentMembers || 0}`,
+    `Total de Cédulas Depositadas na Urna: ${result.totalVotes}`,
   ];
 
   for (const line of preambuloLines) {
     doc.text(line, 15, currentY);
-    currentY += 4.5;
+    currentY += 5;
   }
 
-  currentY += 3;
+  currentY += 4;
 
   // 3. Tabela de Votos
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(15, 23, 42);
-  doc.text("2. QUADRO DEMONSTRATIVO DE APURAÇÃO", 15, currentY);
+  doc.text("2. QUADRO DE APURAÇÃO DOS VOTOS", 15, currentY);
   currentY += 3;
 
-  let tableData: string[][] = [];
+  const r = result.singleSlateResult || {
+    yesVotes: 0,
+    noVotes: 0,
+    yesPercentage: 0,
+    noPercentage: 0,
+    isElected: false,
+    proclamationText: "",
+  };
 
-  if (election.mode === "SINGLE_SLATE_APPROVAL" && result.singleSlateResult) {
-    const r = result.singleSlateResult;
-    tableData = [
-      [
-        "SIM (Aprovação da Chapa)",
-        `${r.yesVotes}`,
-        `${r.yesPercentage.toFixed(2)}%`,
-      ],
-      [
-        "NÃO (Rejeição da Chapa)",
-        `${r.noVotes}`,
-        `${r.noPercentage.toFixed(2)}%`,
-      ],
-      [
-        "VOTO EM BRANCO",
-        `${result.blankVotes}`,
-        `${r.blankPercentage.toFixed(2)}%`,
-      ],
-    ];
-  } else if (result.multiSlateResult) {
-    tableData = result.multiSlateResult.slatesTally.map((st) => [
-      st.slate.name,
-      `${st.votes}`,
-      `${st.percentage.toFixed(2)}%`,
-    ]);
-    if (result.blankVotes > 0) {
-      const blankPct =
-        result.totalVotes > 0
-          ? (result.blankVotes / result.totalVotes) * 100
-          : 0;
-      tableData.push([
-        "VOTO EM BRANCO",
-        `${result.blankVotes}`,
-        `${blankPct.toFixed(2)}%`,
-      ]);
-    }
-  }
+  const tableData: string[][] = [
+    [
+      "SIM (Aprovação da Chapa 01)",
+      `${r.yesVotes}`,
+      `${r.yesPercentage.toFixed(2)}%`,
+    ],
+    [
+      "NÃO (Rejeição da Chapa 01)",
+      `${r.noVotes}`,
+      `${r.noPercentage.toFixed(2)}%`,
+    ],
+  ];
 
   autoTable(doc, {
     startY: currentY,
-    head: [["Opção / Chapa", "Votos Computados", "Percentual"]],
+    head: [["Opção de Voto", "Votos Computados", "Percentual"]],
     body: tableData,
     theme: "grid",
     headStyles: {
       fillColor: [30, 41, 59],
       textColor: [255, 255, 255],
       fontStyle: "bold",
-      fontSize: 9,
+      fontSize: 9.5,
     },
     styles: {
-      fontSize: 9,
-      cellPadding: 2.5,
+      fontSize: 9.5,
+      cellPadding: 3,
       textColor: [30, 41, 59],
     },
     columnStyles: {
@@ -159,110 +133,39 @@ export function generateElectionReportPdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(15, 23, 42);
-  doc.text("3. CONCLUSÃO E PROCLAMAÇÃO OFICIAL", 15, currentY);
+  doc.text("3. CONCLUSÃO E PROCLAMAÇÃO DO RESULTADO", 15, currentY);
   currentY += 5;
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
+  doc.setFontSize(9.5);
   doc.setTextColor(51, 65, 85);
 
-  let proclamation = "";
-  let electedSlate: Slate | undefined;
-
-  if (election.mode === "SINGLE_SLATE_APPROVAL" && result.singleSlateResult) {
-    proclamation = result.singleSlateResult.proclamationText;
-    if (result.singleSlateResult.isElected) {
-      electedSlate = result.singleSlateResult.slate || slates[0];
-    }
-  } else if (result.multiSlateResult) {
-    proclamation = result.multiSlateResult.proclamationText;
-    if (
-      result.multiSlateResult.isElected &&
-      result.multiSlateResult.electedSlate
-    ) {
-      electedSlate = result.multiSlateResult.electedSlate;
-    }
-  }
-
+  const proclamation = r.proclamationText;
   const splitProclamation = doc.splitTextToSize(proclamation, pageWidth - 30);
   doc.text(splitProclamation, 15, currentY);
-  currentY += splitProclamation.length * 4.5 + 4;
+  currentY += splitProclamation.length * 5 + 8;
 
-  // 5. Mesa Diretora Eleita (se houver)
-  if (electedSlate && electedSlate.members.length > 0) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(15, 23, 42);
-    doc.text(
-      `4. COMPOSIÇÃO DA MESA DIRETORA ELEITA (${electedSlate.name.toUpperCase()})`,
-      15,
-      currentY,
-    );
-    currentY += 3;
-
-    const boardData = electedSlate.members.map((m) => [m.role, m.name]);
-
-    autoTable(doc, {
-      startY: currentY,
-      head: [["Cargo", "Nome do Membro Eleito"]],
-      body: boardData,
-      theme: "grid",
-      headStyles: {
-        fillColor: [5, 150, 105], // Emerald 600
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        fontSize: 9,
-      },
-      styles: {
-        fontSize: 8.5,
-        cellPadding: 2,
-        textColor: [30, 41, 59],
-      },
-      columnStyles: {
-        0: { cellWidth: 70 },
-        1: { cellWidth: 110 },
-      },
-      margin: { left: 15, right: 15 },
-    });
-
-    currentY = (doc.lastAutoTable?.finalY ?? currentY) + 8;
-  }
-
-  // 6. Evidência de Integridade e Hash
-  if (currentY > 230) {
-    doc.addPage();
-    currentY = 20;
-  }
-
+  // 5. Evidência de Integridade e Hash
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(100, 116, 139);
-  doc.text("5. EVIDÊNCIA DE INTEGRIDADE E CONFERÊNCIA DIGITAL", 15, currentY);
+  doc.text("4. EVIDÊNCIA DE INTEGRIDADE DIGITAL", 15, currentY);
   currentY += 4.5;
 
   doc.setFont("courier", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(71, 85, 105);
   doc.text(
-    `SHA-256: ${result.dataHash || "[HASH CANÔNICO DOS DADOS DA VOTAÇÃO]"}`,
+    `SHA-256: ${result.dataHash || "[HASH DOS DADOS DA VOTAÇÃO]"}`,
     15,
     currentY,
   );
   currentY += 3.5;
-  doc.text(
-    `ID do Pleito: ${election.id} | Emitido em: ${new Date().toLocaleString("pt-BR")}`,
-    15,
-    currentY,
-  );
+  doc.text(`Emitido em: ${new Date().toLocaleString("pt-BR")}`, 15, currentY);
 
-  currentY += 12;
+  currentY += 16;
 
-  // 7. Termo de Assinaturas
-  if (currentY > 240) {
-    doc.addPage();
-    currentY = 30;
-  }
-
+  // 6. Termo de Assinaturas
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8.5);
   doc.setTextColor(30, 41, 59);
@@ -272,27 +175,12 @@ export function generateElectionReportPdf(
   const col2X = pageWidth - 20 - sigWidth;
 
   doc.line(col1X, currentY + 12, col1X + sigWidth, currentY + 12);
-  doc.text(
-    "Presidente da Mesa Eleitoral",
-    col1X + sigWidth / 2,
-    currentY + 16,
-    { align: "center" },
-  );
-
-  doc.line(col2X, currentY + 12, col2X + sigWidth, currentY + 12);
-  doc.text("1º Secretário(a)", col2X + sigWidth / 2, currentY + 16, {
+  doc.text("Presidente da Assembleia", col1X + sigWidth / 2, currentY + 16, {
     align: "center",
   });
 
-  currentY += 28;
-
-  doc.line(
-    pageWidth / 2 - sigWidth / 2,
-    currentY + 12,
-    pageWidth / 2 + sigWidth / 2,
-    currentY + 12,
-  );
-  doc.text("Fiscal / Representante de Chapa", pageWidth / 2, currentY + 16, {
+  doc.line(col2X, currentY + 12, col2X + sigWidth, currentY + 12);
+  doc.text("Secretário(a) da Mesa", col2X + sigWidth / 2, currentY + 16, {
     align: "center",
   });
 
@@ -301,10 +189,9 @@ export function generateElectionReportPdf(
 
 export function downloadElectionReportPdf(
   election: Election,
-  slates: Slate[],
   result: ElectionResult,
 ): void {
-  const doc = generateElectionReportPdf(election, slates, result);
+  const doc = generateElectionReportPdf(election, result);
   const dateStr = election.date || new Date().toISOString().split("T")[0];
-  doc.save(`ata-apuracao-${dateStr}.pdf`);
+  doc.save(`ata-votacao-chapa01-${dateStr}.pdf`);
 }

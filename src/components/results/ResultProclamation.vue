@@ -1,11 +1,6 @@
 <script setup lang="ts">
 import confetti from "canvas-confetti";
-import {
-  AlertTriangle,
-  Award,
-  CheckCircle,
-  ShieldAlert,
-} from "lucide-vue-next";
+import { AlertTriangle, Award } from "lucide-vue-next";
 import { onMounted } from "vue";
 import type { ElectionResult } from "~/domain/types";
 
@@ -13,26 +8,20 @@ const props = defineProps<{
   result: ElectionResult;
 }>();
 
-const isElected =
-  props.result.singleSlateResult?.isElected ||
-  props.result.multiSlateResult?.isElected ||
-  false;
+const isElected = props.result.singleSlateResult?.isElected ?? false;
 
-const proclamationText =
-  props.result.singleSlateResult?.proclamationText ||
-  props.result.multiSlateResult?.proclamationText ||
-  "";
+const proclamationText = props.result.singleSlateResult?.proclamationText ?? "";
 
 onMounted(() => {
   if (isElected) {
     try {
       confetti({
-        particleCount: 80,
-        spread: 70,
+        particleCount: 70,
+        spread: 60,
         origin: { y: 0.6 },
       });
     } catch {
-      // Ignora erro se canvas não estiver disponível
+      // Ignora se canvas não estiver disponível
     }
   }
 });
@@ -60,8 +49,8 @@ onMounted(() => {
         <AlertTriangle v-else class="w-8 h-8" />
       </div>
 
-      <div class="flex-1">
-        <div class="flex items-center gap-2 mb-1">
+      <div class="flex-1 space-y-2">
+        <div class="flex items-center gap-2">
           <span
             class="px-2.5 py-0.5 text-xs font-black uppercase tracking-wider rounded-md"
             :class="
@@ -70,34 +59,17 @@ onMounted(() => {
                 : 'bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100'
             "
           >
-            {{ isElected ? 'Resultado Oficial: Eleita' : 'Resultado Oficial: Não Eleita' }}
+            {{ isElected ? 'Resultado: APROVADA' : 'Resultado: NÃO APROVADA' }}
           </span>
         </div>
 
-        <h3 class="text-xl sm:text-2xl font-black mb-2">
-          {{ isElected ? 'CHAPA ELEITA COM MAIORIA ABSOLUTA' : 'NENHUMA CHAPA ATINGIU 50% + 1' }}
+        <h3 class="text-xl sm:text-2xl font-black">
+          {{ isElected ? 'CHAPA 01 ELEITA COM SUCESSO' : 'A CHAPA 01 NÃO OBTEVE APROVAÇÃO' }}
         </h3>
 
-        <p class="text-sm opacity-90 leading-relaxed font-medium">
+        <p class="text-sm sm:text-base opacity-90 leading-relaxed font-medium">
           {{ proclamationText }}
         </p>
-
-        <div class="mt-4 pt-3 border-t border-current/20 flex flex-wrap items-center gap-4 text-xs font-semibold">
-          <div>
-            Base do Quórum:
-            <span class="font-bold">
-              {{ result.quorumBasis === 'VALID_VOTES' ? 'Votos Válidos' : 'Total de Depositados' }}
-            </span>
-          </div>
-          <div>
-            Mínimo Necessário:
-            <span class="font-bold">{{ result.requiredVotesToWin }} votos</span>
-          </div>
-          <div>
-            Total de Votos:
-            <span class="font-bold">{{ result.totalVotes }}</span>
-          </div>
-        </div>
       </div>
     </div>
   </div>
