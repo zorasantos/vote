@@ -4,18 +4,49 @@ import {
   Database,
   PieChart,
   Settings2,
+  StopCircle,
   Users,
   Vote,
 } from "lucide-vue-next";
+import { ref } from "vue";
 import { useRouter } from "vue-router";
 import BaseButton from "~/components/common/BaseButton.vue";
+import BaseModal from "~/components/common/BaseModal.vue";
 import { useElectionStore } from "~/store/electionStore";
+import { useUiStore } from "~/store/uiStore";
 
 const router = useRouter();
 const electionStore = useElectionStore();
+const uiStore = useUiStore();
+
+const showConfirmCloseElectionModal = ref(false);
+const isClosing = ref(false);
 
 function handleOpenVoting() {
   router.push("/voting");
+}
+
+function handleRequestCloseElection() {
+  showConfirmCloseElectionModal.value = true;
+}
+
+async function handleConfirmCloseElection() {
+  isClosing.value = true;
+  try {
+    await electionStore.closeElection();
+    showConfirmCloseElectionModal.value = false;
+    uiStore.addToast(
+      "success",
+      "Pleito Encerrado com Sucesso!",
+      "Redirecionando para a tela de apuração e emissão da ata.",
+    );
+    router.push("/results");
+  } catch (e) {
+    const errorMsg = e instanceof Error ? e.message : "Erro desconhecido";
+    uiStore.addToast("error", "Erro ao encerrar pleito", errorMsg);
+  } finally {
+    isClosing.value = false;
+  }
 }
 </script>
 
@@ -60,16 +91,27 @@ function handleOpenVoting() {
 
         <!-- Ações do Hero -->
         <div class="flex flex-wrap items-center gap-3 pt-4">
-          <BaseButton
-            v-if="electionStore.isOpen"
-            variant="success"
-            size="xl"
-            class="shadow-lg shadow-emerald-900/20 font-black tracking-wide py-4 px-8 text-lg"
-            @click="handleOpenVoting"
-          >
-            <Vote class="w-6 h-6 mr-2" />
-            ENTRAR NA CABINE DE VOTAÇÃO
-          </BaseButton>
+          <template v-if="electionStore.isOpen">
+            <BaseButton
+              variant="success"
+              size="xl"
+              class="shadow-lg shadow-emerald-900/20 font-black tracking-wide py-4 px-8 text-lg"
+              @click="handleOpenVoting"
+            >
+              <Vote class="w-6 h-6 mr-2" />
+              ENTRAR NA CABINE DE VOTAÇÃO
+            </BaseButton>
+
+            <BaseButton
+              variant="danger"
+              size="xl"
+              class="font-black tracking-wide py-4 px-6 text-base shadow-md"
+              @click="handleRequestCloseElection"
+            >
+              <StopCircle class="w-5 h-5 mr-2" />
+              ENCERRAR PLEITO
+            </BaseButton>
+          </template>
 
           <BaseButton
             v-else-if="electionStore.isDraft"
@@ -166,5 +208,41 @@ function handleOpenVoting() {
         </div>
       </div>
     </div>
+
+    <!-- Modal de Confirmação de Encerramento do Pleito -->
+    <BaseModal
+      v-model="showConfirmCloseElectionModal"
+      title="Encerrar Votação Oficial?"
+      description="Esta ação fechará a urna definitivamente. Não será possível registrar novos votos após o encerramento."
+      max-width="md"
+    >
+      <div class="space-y-3">
+        <div class="p-4 bg-rose-50 dark:bg-rose-950/60 rounded-xl border border-rose-200 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200">
+          <p class="font-bold mb-1">Atenção do Responsável:</p>
+          <p>Total de votos computados até o momento: <strong>{{ electionStore.totalVotesCount }} voto(s)</strong>.</p>
+          <p class="mt-1">Ao confirmar, o pleito será fechado com chave de segurança e você será direcionado para a tela de apuração e emissão da ata oficial.</p>
+        </div>
+      </div>
+
+      <template #footer>
+        <BaseButton
+          variant="outline"
+          size="md"
+          :disabled="isClosing"
+          @click="showConfirmCloseElectionModal = false"
+        >
+          Cancelar
+        </BaseButton>
+        <BaseButton
+          variant="danger"
+          size="md"
+          :loading="isClosing"
+          @click="handleConfirmCloseElection"
+        >
+          <StopCircle class="w-4 h-4 mr-1" />
+          Confirmar e Encerrar Urna
+        </BaseButton>
+      </template>
+    </BaseModal>
   </div>
 </template>

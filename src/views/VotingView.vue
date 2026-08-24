@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import {
   ArrowRight,
-  HelpCircle,
   Lock,
   ShieldCheck,
-  StopCircle,
   Volume2,
   VolumeX,
   Vote,
@@ -12,14 +10,13 @@ import {
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import BaseButton from "~/components/common/BaseButton.vue";
-import BaseModal from "~/components/common/BaseModal.vue";
 import PinModal from "~/components/common/PinModal.vue";
 import SingleSlateBallot from "~/components/voting/SingleSlateBallot.vue";
 import VoteConfirmation from "~/components/voting/VoteConfirmation.vue";
 import VoteSuccess from "~/components/voting/VoteSuccess.vue";
 import { useKeyboardShortcuts } from "~/composables/useKeyboardShortcuts";
 import { useVotingSession } from "~/composables/useVotingSession";
-import type { VoteChoice } from "~/domain/types";
+import type { Slate, VoteChoice } from "~/domain/types";
 import { useElectionStore } from "~/store/electionStore";
 import { useUiStore } from "~/store/uiStore";
 
@@ -40,12 +37,23 @@ const {
 
 const isSaving = ref(false);
 const showPinModal = ref(false);
-const pinTargetAction = ref<"exit" | "closeElection" | null>(null);
-const showConfirmCloseElectionModal = ref(false);
 
 const isSingleSlate = computed(
   () => electionStore.currentElection?.mode === "SINGLE_SLATE_APPROVAL",
 );
+
+const currentSlate = computed<Slate>(() => {
+  return (
+    electionStore.slates[0] || {
+      id: "slate-01",
+      electionId: electionStore.currentElection?.id || "",
+      number: "01",
+      name: "Chapa 01",
+      members: [],
+      createdAt: "",
+    }
+  );
+});
 
 function handleSelectChoice(choice: VoteChoice) {
   uiStore.playBeep("confirm");
@@ -127,37 +135,11 @@ useKeyboardShortcuts({
 });
 
 function requestExit() {
-  pinTargetAction.value = "exit";
-  showPinModal.value = true;
-}
-
-function requestCloseElection() {
-  pinTargetAction.value = "closeElection";
   showPinModal.value = true;
 }
 
 function onPinSuccess() {
-  if (pinTargetAction.value === "exit") {
-    router.push("/");
-  } else if (pinTargetAction.value === "closeElection") {
-    showConfirmCloseElectionModal.value = true;
-  }
-}
-
-async function handleCloseElectionConfirmed() {
-  try {
-    await electionStore.closeElection();
-    showConfirmCloseElectionModal.value = false;
-    uiStore.addToast(
-      "success",
-      "Eleição Encerrada!",
-      "Redirecionando para a tela de apuração e emissão da ata.",
-    );
-    router.push("/results");
-  } catch (e) {
-    const errorMsg = e instanceof Error ? e.message : "Erro desconhecido";
-    uiStore.addToast("error", "Erro ao encerrar", errorMsg);
-  }
+  router.push("/");
 }
 </script>
 
@@ -179,7 +161,7 @@ async function handleCloseElectionConfirmed() {
         </div>
       </div>
 
-      <!-- Controles do Mesário (Protegidos) -->
+      <!-- Controles do Mesário (Protegidos por PIN para sair) -->
       <div class="flex items-center gap-3">
         <div class="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-800 rounded-full text-xs font-semibold text-slate-300">
           <ShieldCheck class="w-3.5 h-3.5 text-emerald-400" />
@@ -194,16 +176,6 @@ async function handleCloseElectionConfirmed() {
         >
           <Volume2 v-if="uiStore.isSoundEnabled" class="w-4 h-4" />
           <VolumeX v-else class="w-4 h-4" />
-        </button>
-
-        <button
-          v-if="electionStore.isOpen"
-          type="button"
-          class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold bg-rose-600/20 text-rose-300 hover:bg-rose-600 hover:text-white border border-rose-500/40 rounded-xl transition-colors cursor-pointer"
-          @click="requestCloseElection"
-        >
-          <StopCircle class="w-4 h-4" />
-          Encerrar Pleito
         </button>
 
         <button
@@ -253,16 +225,16 @@ async function handleCloseElectionConfirmed() {
       <!-- 2. Estado SELECTING: Escolha na Cédula -->
       <div v-else-if="step === 'SELECTING'" class="w-full max-w-4xl">
         <SingleSlateBallot
-          :slate="electionStore.slates[0] || { id: 'slate-01', electionId: '', number: '01', name: 'Chapa 01', members: [], createdAt: '' }"
+          :slate="currentSlate"
           :allow-blank-vote="false"
           @select="handleSelectChoice"
         />
       </div>
 
       <!-- 3. Estado CONFIRMING / SAVING: Revisão em 2 Passos -->
-      <div v-else-if="step === 'CONFIRMING' || step === 'SAVING'" class="w-full max-w-2xl">
+      <div v-else-if="(step === 'CONFIRMING' || step === 'SAVING') && selectedChoice" class="w-full max-w-2xl">
         <VoteConfirmation
-          :choice="selectedChoice!"
+          :choice="selectedChoice"
           :slates="electionStore.slates"
           :is-saving="isSaving"
           @confirm="handleConfirmVote"
@@ -284,31 +256,5 @@ async function handleCloseElectionConfirmed() {
       v-model="showPinModal"
       @success="onPinSuccess"
     />
-
-    <!-- Modal de Confirmação de Encerramento do Pleito -->
-    <BaseModal
-      v-model="showConfirmCloseElectionModal"
-      title="Encerrar Votação Oficial?"
-      description="Esta ação fechará a urna definitivamente. Não será possível registrar novos votos."
-      max-width="md"
-    >
-      <div class="space-y-3">
-        <div class="p-4 bg-rose-50 dark:bg-rose-950/60 rounded-xl border border-rose-200 dark:border-rose-800 text-xs text-rose-900 dark:text-rose-200">
-          <p class="font-bold mb-1">Atenção Mesário:</p>
-          <p>Total de votos apurados até agora: <strong>{{ electionStore.totalVotesCount }} voto(s)</strong>.</p>
-          <p class="mt-1">Ao confirmar, o sistema gerará a ata oficial com o hash criptográfico final.</p>
-        </div>
-      </div>
-
-      <template #footer>
-        <BaseButton variant="outline" size="md" @click="showConfirmCloseElectionModal = false">
-          Voltar para Votação
-        </BaseButton>
-        <BaseButton variant="danger" size="md" @click="handleCloseElectionConfirmed">
-          <StopCircle class="w-4 h-4 mr-1" />
-          Confirmar e Encerrar Urna
-        </BaseButton>
-      </template>
-    </BaseModal>
   </div>
 </template>
