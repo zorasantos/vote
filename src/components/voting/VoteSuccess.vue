@@ -26,10 +26,10 @@ const emit = defineEmits<(e: "next") => void>();
 
     <div class="p-4 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700 max-w-md mx-auto">
       <p class="text-xs font-semibold text-slate-500 dark:text-slate-400">
-        Por favor, libere a cabine de votação para o próximo associado.
+        Por favor, libere a cabine e dirija-se à mesa dos mesários.
       </p>
       <p class="text-xs text-slate-400 dark:text-slate-500 mt-1">
-        Retornando automaticamente em <span class="font-bold text-slate-900 dark:text-white">{{ countdown }}s</span>...
+        Finalizando sessão em <span class="font-bold text-slate-900 dark:text-white">{{ countdown }}s</span>...
       </p>
     </div>
 
@@ -41,7 +41,7 @@ const emit = defineEmits<(e: "next") => void>();
         @click="emit('next')"
       >
         <UserCheck class="w-5 h-5 mr-1.5" />
-        PRÓXIMO VOTANTE (Espaço)
+        CONCLUIR VOTAÇÃO
       </BaseButton>
     </div>
   </div>

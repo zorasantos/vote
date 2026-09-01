@@ -33,7 +33,11 @@ const {
   backToSelection,
   confirmVote,
   finishSession,
-} = useVotingSession();
+} = useVotingSession({
+  onComplete: () => {
+    router.push("/voted");
+  },
+});
 
 const isSaving = ref(false);
 const showPinModal = ref(false);
@@ -128,8 +132,6 @@ useKeyboardShortcuts({
   onSpace: () => {
     if (step.value === "READY") {
       startSession();
-    } else if (step.value === "SUCCESS") {
-      finishSession();
     }
   },
 });

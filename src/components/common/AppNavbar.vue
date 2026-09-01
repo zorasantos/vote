@@ -20,7 +20,9 @@ const uiStore = useUiStore();
 
 const currentPath = computed(() => route.path);
 
-const isVotingScreen = computed(() => route.path === "/voting");
+const isKioskScreen = computed(
+  () => route.path === "/voting" || route.path === "/voted",
+);
 
 const statusBadge = computed(() => {
   if (!electionStore.currentElection) {
@@ -56,7 +58,7 @@ const statusBadge = computed(() => {
 
 <template>
   <header
-    v-if="!isVotingScreen"
+    v-if="!isKioskScreen"
     class="sticky top-0 z-40 w-full border-b border-slate-200 bg-white/90 backdrop-blur-md dark:border-slate-800 dark:bg-slate-900/90 transition-colors"
   >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">

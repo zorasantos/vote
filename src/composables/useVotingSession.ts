@@ -8,7 +8,7 @@ export type VotingStep =
   | "SAVING"
   | "SUCCESS";
 
-export function useVotingSession() {
+export function useVotingSession(options?: { onComplete?: () => void }) {
   const step = ref<VotingStep>("READY");
   const selectedChoice = ref<VoteChoice | null>(null);
   const countdown = ref<number>(3);
@@ -59,6 +59,9 @@ export function useVotingSession() {
     }
     selectedChoice.value = null;
     step.value = "READY";
+    if (options?.onComplete) {
+      options.onComplete();
+    }
   }
 
   onUnmounted(() => {
