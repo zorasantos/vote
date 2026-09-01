@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { KeyRound, Lock } from "lucide-vue-next";
-import { ref, watch } from "vue";
+import { onMounted, onUnmounted, ref, watch } from "vue";
 import BaseButton from "./BaseButton.vue";
 import BaseModal from "./BaseModal.vue";
 
@@ -62,6 +62,28 @@ function handleSubmit() {
     enteredPin.value = "";
   }
 }
+
+function handleKeydown(e: KeyboardEvent) {
+  if (!props.modelValue) return;
+
+  if (e.key >= "0" && e.key <= "9") {
+    handleNumber(e.key);
+  } else if (e.key === "Backspace") {
+    handleBackspace();
+  } else if (e.key === "Enter") {
+    if (enteredPin.value.length > 0) {
+      handleSubmit();
+    }
+  }
+}
+
+onMounted(() => {
+  window.addEventListener("keydown", handleKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener("keydown", handleKeydown);
+});
 </script>
 
 <template>
