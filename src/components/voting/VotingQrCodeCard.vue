@@ -3,7 +3,6 @@ import {
   Check,
   Copy,
   Download,
-  ExternalLink,
   Maximize2,
   QrCode,
   Smartphone,
@@ -84,10 +83,6 @@ function handleDownloadQrCode() {
   const fileName = "qrcode-cabine-votacao-ace.png";
   downloadQrCodeImage(qrDataUrl.value, fileName);
   uiStore.addToast("success", "Download Concluído", "Imagem do QR Code salva.");
-}
-
-function handleOpenNewTab() {
-  window.open(activeCabinUrl.value, "_blank", "noopener,noreferrer");
 }
 
 function handleOpenDisplay() {
@@ -205,7 +200,7 @@ function handleOpenDisplay() {
           </ul>
         </div>
 
-        <!-- Ações de Download e Abertura -->
+        <!-- Ação de Download -->
         <div class="flex flex-wrap items-center gap-2.5 pt-1">
           <BaseButton
             variant="outline"
@@ -215,16 +210,6 @@ function handleOpenDisplay() {
           >
             <Download class="w-3.5 h-3.5 mr-1.5 text-slate-600 dark:text-slate-300" />
             Baixar Imagem (PNG)
-          </BaseButton>
-
-          <BaseButton
-            variant="primary"
-            size="sm"
-            class="font-bold text-xs"
-            @click="handleOpenNewTab"
-          >
-            <ExternalLink class="w-3.5 h-3.5 mr-1.5" />
-            Abrir em Nova Aba
           </BaseButton>
         </div>
       </div>
