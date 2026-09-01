@@ -83,8 +83,9 @@ export const useElectionStore = defineStore("election", () => {
         const now = new Date().toISOString();
         const newElection: Election = {
           id: crypto.randomUUID(),
-          title: "Votação da Mesa Diretora",
-          associationName: "Associação de Moradores",
+          title: "Eleição da Mesa Diretora — Biênio 2026/2028",
+          associationName: "Associação Cearense de Escritores - ACE",
+          associationLogo: "/ace-logo.jpg",
           date: now.split("T")[0],
           status: "DRAFT",
           mode: "SINGLE_SLATE_APPROVAL",
@@ -109,6 +110,23 @@ export const useElectionStore = defineStore("election", () => {
         allElections.find((e) => e.status === "OPEN") ||
         allElections.find((e) => e.status === "DRAFT") ||
         allElections[allElections.length - 1];
+
+      // Força a atualização do nome e logotipo para a Associação Cearense de Escritores - ACE
+      if (
+        active.associationName !== "Associação Cearense de Escritores - ACE" ||
+        active.associationLogo !== "/ace-logo.jpg"
+      ) {
+        active.associationName = "Associação Cearense de Escritores - ACE";
+        active.associationLogo = "/ace-logo.jpg";
+        if (
+          !active.title ||
+          active.title === "Votação da Mesa Diretora" ||
+          active.title === "Votação da Mesa Diretora — Chapa 01"
+        ) {
+          active.title = "Eleição da Mesa Diretora — Biênio 2026/2028";
+        }
+        await db.elections.put(active);
+      }
 
       currentElection.value = active;
       let loadedSlates = await db.slates
@@ -152,8 +170,9 @@ export const useElectionStore = defineStore("election", () => {
       if (!currentElection.value) {
         const newElection: Election = {
           id: crypto.randomUUID(),
-          title: data.title || "Votação da Mesa Diretora",
-          associationName: data.associationName || "Associação de Moradores",
+          title: data.title || "Eleição da Mesa Diretora — Biênio 2026/2028",
+          associationName: "Associação Cearense de Escritores - ACE",
+          associationLogo: "/ace-logo.jpg",
           date: data.date || now.split("T")[0],
           status: "DRAFT",
           mode: "SINGLE_SLATE_APPROVAL",
@@ -174,6 +193,8 @@ export const useElectionStore = defineStore("election", () => {
         const updated: Election = {
           ...currentElection.value,
           ...data,
+          associationName: "Associação Cearense de Escritores - ACE",
+          associationLogo: "/ace-logo.jpg",
           mode: "SINGLE_SLATE_APPROVAL",
           allowBlankVote: false,
         };

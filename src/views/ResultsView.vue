@@ -33,13 +33,23 @@ function handleDownloadPdf() {
   <div class="max-w-4xl mx-auto space-y-8 py-6">
     <!-- Top Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">
-          Apuração da Votação — Chapa 01
-        </h1>
-        <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">
-          Demonstrativo dos votos da assembleia e proclamação oficial da eleição.
-        </p>
+      <div class="flex items-center gap-4">
+        <img
+          :src="electionStore.currentElection?.associationLogo || '/ace-logo.jpg'"
+          alt="Logo da Associação"
+          class="w-14 h-14 sm:w-16 sm:h-16 object-contain rounded-2xl bg-white p-1.5 border border-slate-200 dark:border-slate-700 shadow-sm shrink-0"
+        />
+        <div>
+          <span class="text-xs font-bold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+            {{ electionStore.currentElection?.associationName || 'Associação Cearense de Escritores - ACE' }}
+          </span>
+          <h1 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-tight">
+            Apuração da Votação — Chapa 01
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+            {{ electionStore.currentElection?.title || 'Eleição da Mesa Diretora — Biênio 2026/2028' }}
+          </p>
+        </div>
       </div>
 
       <div class="flex items-center gap-3">

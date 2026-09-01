@@ -36,7 +36,8 @@ export interface Slate {
 export interface Election {
   id: string;
   title: string; // Ex: "Eleição da Mesa Diretora — Biênio 2026/2028"
-  associationName: string; // Ex: "Associação dos Moradores"
+  associationName: string; // Ex: "Associação Cearense de Escritores - ACE"
+  associationLogo?: string; // Caminho ou data URL da logomarca da entidade
   date: string; // Data do pleito (YYYY-MM-DD)
   status: ElectionStatus;
   mode: VotingMode;

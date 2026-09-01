@@ -1,13 +1,5 @@
 <script setup lang="ts">
-import {
-  ArrowRight,
-  Database,
-  PieChart,
-  Settings2,
-  StopCircle,
-  Users,
-  Vote,
-} from "lucide-vue-next";
+import { PieChart, Settings2, StopCircle, Users, Vote } from "lucide-vue-next";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import BaseButton from "~/components/common/BaseButton.vue";
@@ -61,33 +53,44 @@ async function handleConfirmCloseElection() {
           : 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white border-slate-200 dark:border-slate-800'
       "
     >
-      <div class="max-w-3xl space-y-4">
-        <div class="inline-flex items-center gap-2 px-3 py-1 text-xs font-black uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-          {{ electionStore.isOpen ? 'Votação em Andamento' : electionStore.isClosed ? 'Votação Encerrada' : 'Pronto para Configurar e Votar' }}
+      <div class="flex flex-col md:flex-row items-start md:items-center gap-6">
+        <div class="shrink-0">
+          <img
+            :src="electionStore.currentElection?.associationLogo || '/ace-logo.jpg'"
+            alt="Logo da Associação"
+            class="w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-2xl bg-white p-2 border-2 border-slate-200 dark:border-slate-700 shadow-md"
+          />
         </div>
 
-        <h1 class="text-2xl sm:text-4xl font-black tracking-tight">
-          Votação da Chapa 01
-        </h1>
-
-        <p class="text-sm sm:text-base opacity-80 leading-relaxed font-medium">
-          Sistema eletrônico simples para votação da Mesa Diretora da Associação.
-        </p>
-
-        <!-- Quórum Rápido se houver -->
-        <div class="flex flex-wrap items-center gap-4 text-xs font-bold pt-2 opacity-90">
-          <div class="flex items-center gap-1.5 bg-black/10 dark:bg-white/10 px-3 py-1.5 rounded-xl">
-            <Users class="w-4 h-4" />
-            Associados: {{ electionStore.currentElection?.totalMembers || 100 }}
+        <div class="max-w-3xl space-y-3 flex-1">
+          <div class="inline-flex items-center gap-2 px-3 py-1 text-xs font-black uppercase tracking-wider rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+            {{ electionStore.isOpen ? 'Votação em Andamento' : electionStore.isClosed ? 'Votação Encerrada' : 'Pronto para Configurar e Votar' }}
           </div>
-          <div class="flex items-center gap-1.5 bg-black/10 dark:bg-white/10 px-3 py-1.5 rounded-xl">
-            Presentes: {{ electionStore.currentElection?.presentMembers || 50 }}
-          </div>
-          <div v-if="electionStore.isOpen || electionStore.isClosed" class="flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-xl">
-            Votos Computados: {{ electionStore.totalVotesCount }}
+
+          <h1 class="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+            {{ electionStore.currentElection?.associationName || 'Associação Cearense de Escritores - ACE' }}
+          </h1>
+
+          <p class="text-sm sm:text-base opacity-90 leading-relaxed font-medium">
+            {{ electionStore.currentElection?.title || 'Eleição da Mesa Diretora — Biênio 2026/2028' }} (Chapa 01)
+          </p>
+
+          <!-- Quórum Rápido se houver -->
+          <div class="flex flex-wrap items-center gap-4 text-xs font-bold pt-1 opacity-90">
+            <div class="flex items-center gap-1.5 bg-black/10 dark:bg-white/10 px-3 py-1.5 rounded-xl">
+              <Users class="w-4 h-4" />
+              Associados: {{ electionStore.currentElection?.totalMembers || 100 }}
+            </div>
+            <div class="flex items-center gap-1.5 bg-black/10 dark:bg-white/10 px-3 py-1.5 rounded-xl">
+              Presentes: {{ electionStore.currentElection?.presentMembers || 50 }}
+            </div>
+            <div v-if="electionStore.isOpen || electionStore.isClosed" class="flex items-center gap-1.5 bg-emerald-500/20 text-emerald-400 px-3 py-1.5 rounded-xl">
+              Votos Computados: {{ electionStore.totalVotesCount }}
+            </div>
           </div>
         </div>
+      </div>
 
         <!-- Ações do Hero -->
         <div class="flex flex-wrap items-center gap-3 pt-4">
@@ -136,7 +139,6 @@ async function handleConfirmCloseElection() {
           </BaseButton>
         </div>
       </div>
-    </div>
 
     <!-- Modal de Confirmação de Encerramento do Pleito -->
     <BaseModal

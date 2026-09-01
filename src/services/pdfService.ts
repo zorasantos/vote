@@ -23,23 +23,24 @@ export function generateElectionReportPdf(
 
   // 1. Cabeçalho Institucional
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setTextColor(15, 23, 42); // Slate 900
-  doc.text("ASSOCIAÇÃO DE MORADORES", pageWidth / 2, currentY, {
+  const assocName = (
+    election.associationName || "Associação Cearense de Escritores - ACE"
+  ).toUpperCase();
+  doc.text(assocName, pageWidth / 2, currentY, {
     align: "center",
   });
 
-  currentY += 7;
-  doc.setFontSize(12);
+  currentY += 6;
+  doc.setFontSize(11);
   doc.setTextColor(30, 41, 59); // Slate 800
-  doc.text(
-    "ATA OFICIAL DE APURAÇÃO DA VOTAÇÃO — CHAPA 01",
-    pageWidth / 2,
-    currentY,
-    {
-      align: "center",
-    },
-  );
+  const docTitle = election.title
+    ? `ATA OFICIAL DE APURAÇÃO — ${election.title.toUpperCase()}`
+    : "ATA OFICIAL DE APURAÇÃO DA VOTAÇÃO — CHAPA 01";
+  doc.text(docTitle, pageWidth / 2, currentY, {
+    align: "center",
+  });
 
   currentY += 4;
   doc.setDrawColor(203, 213, 225); // Slate 300

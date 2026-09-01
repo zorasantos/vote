@@ -148,15 +148,17 @@ function onPinSuccess() {
     <!-- Barra Superior da Cabine (Kiosk Bar) -->
     <header class="h-16 px-6 bg-slate-900 text-white flex items-center justify-between shadow-md shrink-0">
       <div class="flex items-center gap-3">
-        <div class="p-1.5 bg-emerald-500 text-slate-900 rounded-lg font-black">
-          <Vote class="w-5 h-5" />
-        </div>
+        <img
+          :src="electionStore.currentElection?.associationLogo || '/ace-logo.jpg'"
+          alt="Logo da Associação"
+          class="w-9 h-9 object-contain rounded-xl bg-white p-1 border border-slate-700 shadow-xs"
+        />
         <div>
           <h1 class="text-sm sm:text-base font-bold truncate max-w-xs sm:max-w-md">
-            {{ electionStore.currentElection?.associationName || 'Cabine de Votação' }}
+            {{ electionStore.currentElection?.associationName || 'Associação Cearense de Escritores - ACE' }}
           </h1>
           <p class="text-xs text-slate-400 truncate">
-            {{ electionStore.currentElection?.title }}
+            {{ electionStore.currentElection?.title || 'Eleição da Mesa Diretora — Biênio 2026/2028' }}
           </p>
         </div>
       </div>
@@ -194,13 +196,20 @@ function onPinSuccess() {
       <!-- 1. Estado READY: Tela de Espera do Votante -->
       <div
         v-if="step === 'READY'"
-        class="max-w-xl w-full text-center py-12 px-6 bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 shadow-2xl space-y-8"
+        class="max-w-xl w-full text-center py-10 px-6 bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 shadow-2xl space-y-6"
       >
-        <div class="w-20 h-20 mx-auto flex items-center justify-center bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 rounded-3xl shadow-md">
-          <Vote class="w-10 h-10" />
+        <div class="relative inline-block mx-auto">
+          <img
+            :src="electionStore.currentElection?.associationLogo || '/ace-logo.jpg'"
+            alt="Logo da Associação"
+            class="w-24 h-24 sm:w-28 sm:h-28 mx-auto object-contain rounded-3xl bg-white p-2 border-2 border-slate-200 dark:border-slate-700 shadow-lg"
+          />
         </div>
 
         <div class="space-y-2">
+          <p class="text-xs font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400">
+            {{ electionStore.currentElection?.associationName || 'Associação Cearense de Escritores - ACE' }}
+          </p>
           <h2 class="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
             CABINE DE VOTAÇÃO
           </h2>

@@ -59,7 +59,10 @@ onMounted(() => {
                 : 'bg-amber-200 text-amber-900 dark:bg-amber-800 dark:text-amber-100'
             "
           >
-            {{ isElected ? 'Resultado: APROVADA' : 'Resultado: NÃO APROVADA' }}
+            {{ isElected ? 'Resultado Oficial: APROVADA' : 'Resultado Oficial: NÃO APROVADA' }}
+          </span>
+          <span class="text-xs font-bold text-slate-500 dark:text-slate-400">
+            • Associação Cearense de Escritores - ACE
           </span>
         </div>
 

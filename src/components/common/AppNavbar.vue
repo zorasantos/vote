@@ -61,24 +61,28 @@ const statusBadge = computed(() => {
   >
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
       <!-- Logo & Título da Associação -->
-      <div class="flex items-center gap-3 cursor-pointer" @click="router.push('/')">
-        <div class="p-2 bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 rounded-xl shadow-xs">
-          <Vote class="w-5 h-5" />
+      <div class="flex items-center gap-3 cursor-pointer group" @click="router.push('/')">
+        <div class="relative shrink-0">
+          <img
+            :src="electionStore.currentElection?.associationLogo || '/ace-logo.jpg'"
+            alt="Logo da Associação"
+            class="w-10 h-10 object-contain rounded-xl bg-white p-1 border border-slate-200 dark:border-slate-700 shadow-xs group-hover:scale-105 transition-transform"
+          />
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-base font-bold text-slate-900 dark:text-white leading-tight">
-              {{ electionStore.currentElection?.associationName || 'Votação de Mesa Diretora' }}
+            <h1 class="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-tight">
+              {{ electionStore.currentElection?.associationName || 'Associação Cearense de Escritores - ACE' }}
             </h1>
             <span
-              class="px-2 py-0.5 text-xs font-semibold rounded-full"
+              class="px-2 py-0.5 text-xs font-semibold rounded-full shrink-0"
               :class="statusBadge.class"
             >
               {{ statusBadge.label }}
             </span>
           </div>
           <p class="text-xs text-slate-500 dark:text-slate-400 truncate max-w-xs sm:max-w-md">
-            {{ electionStore.currentElection?.title || 'Sistema Eletrônico Local de Eleição' }}
+            {{ electionStore.currentElection?.title || 'Eleição da Mesa Diretora — Biênio 2026/2028' }}
           </p>
         </div>
       </div>

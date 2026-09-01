@@ -24,8 +24,9 @@ export async function seedSingleSlateElection(): Promise<{
 
   const election: Election = {
     id: electionId,
-    title: "Votação da Mesa Diretora",
-    associationName: "Associação de Moradores",
+    title: "Eleição da Mesa Diretora — Biênio 2026/2028",
+    associationName: "Associação Cearense de Escritores - ACE",
+    associationLogo: "/ace-logo.jpg",
     date: new Date().toISOString().split("T")[0],
     status: "DRAFT",
     mode: "SINGLE_SLATE_APPROVAL",

@@ -1,5 +1,12 @@
 <script setup lang="ts">
-import { Save, UserCheck, Users } from "lucide-vue-next";
+import {
+  Building2,
+  FileText,
+  Save,
+  ShieldCheck,
+  UserCheck,
+  Users,
+} from "lucide-vue-next";
 import { reactive, watch } from "vue";
 import BaseButton from "~/components/common/BaseButton.vue";
 import type { Election } from "~/domain/types";
@@ -12,9 +19,11 @@ const props = defineProps<{
 const emit = defineEmits<(e: "save", data: Partial<Election>) => void>();
 
 const form = reactive<{
+  title: string;
   totalMembers: number;
   presentMembers: number;
 }>({
+  title: props.election?.title || "Eleição da Mesa Diretora — Biênio 2026/2028",
   totalMembers: props.election?.totalMembers ?? 100,
   presentMembers: props.election?.presentMembers ?? 50,
 });
@@ -23,6 +32,8 @@ watch(
   () => props.election,
   (newVal) => {
     if (newVal) {
+      form.title =
+        newVal.title || "Eleição da Mesa Diretora — Biênio 2026/2028";
       form.totalMembers = newVal.totalMembers ?? 100;
       form.presentMembers = newVal.presentMembers ?? 50;
     }
@@ -32,19 +43,72 @@ watch(
 
 function handleSubmit() {
   emit("save", {
+    associationName: "Associação Cearense de Escritores - ACE",
+    associationLogo: "/ace-logo.jpg",
+    title: form.title.trim(),
     totalMembers: Number(form.totalMembers),
     presentMembers: Number(form.presentMembers),
     mode: "SINGLE_SLATE_APPROVAL",
     allowBlankVote: false,
     quorumBasis: "VALID_VOTES",
-    title: "Votação da Mesa Diretora — Chapa 01",
-    associationName: "Associação de Moradores",
   });
 }
 </script>
 
 <template>
   <form @submit.prevent="handleSubmit" class="space-y-6">
+    <!-- Bloco 1: Identificação Institucional Fixa -->
+    <div class="p-6 bg-slate-50 dark:bg-slate-800/60 rounded-3xl border border-slate-200 dark:border-slate-700 space-y-5">
+      <!-- Identidade Visual Oficial da ACE -->
+      <div class="flex flex-col sm:flex-row items-center gap-5 p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+        <div class="relative shrink-0">
+          <img
+            src="/ace-logo.jpg"
+            alt="Logotipo da Associação Cearense de Escritores - ACE"
+            class="w-20 h-20 sm:w-24 sm:h-24 object-contain rounded-2xl bg-white p-2 border-2 border-slate-200 dark:border-slate-700 shadow-sm"
+          />
+        </div>
+
+        <div class="space-y-1 text-center sm:text-left flex-1">
+          <div class="flex items-center justify-center sm:justify-start gap-2">
+            <span class="px-2.5 py-0.5 text-xs font-bold bg-teal-100 text-teal-800 dark:bg-teal-950 dark:text-teal-300 rounded-full">
+              Entidade Oficial
+            </span>
+            <span class="text-xs text-slate-400 font-medium">Fundada em 2007</span>
+          </div>
+
+          <h3 class="text-lg sm:text-xl font-black text-slate-900 dark:text-white leading-snug">
+            Associação Cearense de Escritores - ACE
+          </h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400">
+            Logomarca e denominação oficial vinculadas permanentemente ao sistema eleitoral e às atas em PDF.
+          </p>
+        </div>
+      </div>
+
+      <!-- Input de Título da Eleição -->
+      <div>
+        <label
+          for="electionTitle"
+          class="block text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 mb-1.5"
+        >
+          Título / Biênio do Pleito
+        </label>
+        <div class="relative">
+          <input
+            id="electionTitle"
+            v-model="form.title"
+            type="text"
+            required
+            :disabled="disabled"
+            placeholder="Eleição da Mesa Diretora — Biênio 2026/2028"
+            class="w-full px-4 py-3 text-base font-semibold rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 transition-colors"
+          />
+        </div>
+      </div>
+    </div>
+
+    <!-- Bloco 2: Quórum e Associados -->
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
       <!-- Input 1: Quantidade de pessoas na associação -->
       <div class="p-5 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700">
@@ -68,7 +132,7 @@ function handleSubmit() {
           required
           :disabled="disabled"
           placeholder="Ex: 100"
-          class="w-full px-4 py-3 text-lg font-bold rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 transition-colors"
+          class="w-full px-4 py-3 text-lg font-bold rounded-xl border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500 disabled:bg-slate-100 dark:disabled:bg-slate-800 transition-colors"
         />
       </div>
 
@@ -100,7 +164,7 @@ function handleSubmit() {
     </div>
 
     <!-- Alerta Informativo de Simplicidade -->
-    <div class="p-4 bg-blue-50 dark:bg-blue-950/50 rounded-2xl border border-blue-200 dark:border-blue-800 text-sm text-blue-900 dark:text-blue-200 flex items-center justify-between">
+    <div class="p-4 bg-teal-50 dark:bg-teal-950/50 rounded-2xl border border-teal-200 dark:border-teal-800 text-sm text-teal-900 dark:text-teal-200 flex items-center justify-between">
       <div>
         <span class="font-bold block">✓ Votação com Chapa 01 pré-definida</span>
         <span class="text-xs opacity-90">As cédulas conterão unicamente as opções <strong>SIM</strong> e <strong>NÃO</strong> para a Chapa 01.</span>
@@ -108,7 +172,7 @@ function handleSubmit() {
     </div>
 
     <div v-if="!disabled" class="flex justify-end pt-2">
-      <BaseButton type="submit" variant="primary" size="lg" class="px-8 py-3.5 text-base font-bold shadow-md">
+      <BaseButton type="submit" variant="primary" size="lg" class="px-8 py-3.5 text-base font-bold shadow-md cursor-pointer">
         <Save class="w-5 h-5 mr-2" />
         Salvar Configuração
       </BaseButton>

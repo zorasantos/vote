@@ -63,7 +63,7 @@ async function handleOpenElection() {
           Configuração da Votação
         </h1>
         <p class="text-sm text-slate-600 dark:text-slate-400 mt-1">
-          Informe a quantidade de associados e presentes para iniciar a votação da <strong>Chapa 01</strong>.
+          Defina os dados da <strong>Associação Cearense de Escritores - ACE</strong>, logotipo e os dados de quórum para a votação da <strong>Chapa 01</strong>.
         </p>
       </div>
 
@@ -72,7 +72,7 @@ async function handleOpenElection() {
           v-if="electionStore.isDraft"
           variant="success"
           size="lg"
-          class="shadow-lg py-3 px-6 text-base font-bold"
+          class="shadow-lg py-3 px-6 text-base font-bold cursor-pointer"
           @click="showConfirmOpenModal = true"
         >
           <Play class="w-5 h-5 mr-1.5" />
@@ -122,10 +122,10 @@ async function handleOpenElection() {
       </div>
     </div>
 
-    <!-- Card 2: 2 Inputs de Configuração -->
+    <!-- Card 2: Inputs de Configuração -->
     <div class="p-6 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
       <h2 class="text-lg font-bold text-slate-900 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-3">
-        Dados de Quórum da Votação
+        Parâmetros da Entidade & Quórum
       </h2>
 
       <ElectionConfigForm
