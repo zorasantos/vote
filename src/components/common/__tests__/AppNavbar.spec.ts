@@ -77,7 +77,12 @@ describe("AppNavbar.vue", () => {
     // Clica para abrir o menu mobile
     await menuButton.trigger("click");
     expect(wrapper.find(".md\\:hidden.border-t").exists()).toBe(true);
-    expect(wrapper.text()).toContain("Cabine de Votação");
+    expect(wrapper.text()).toContain("Início");
+    expect(wrapper.text()).toContain("Configuração");
+    expect(wrapper.text()).toContain("Apuração");
+    expect(wrapper.text()).toContain("Backup");
+    expect(wrapper.text()).not.toContain("Cabine de Votação");
+    expect(wrapper.text()).not.toContain("Modo Telão");
 
     // Clica novamente para fechar
     await menuButton.trigger("click");

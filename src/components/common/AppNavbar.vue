@@ -4,17 +4,23 @@ import {
   LayoutDashboard,
   Menu,
   PieChart,
-  QrCode,
   Settings2,
   Volume2,
   VolumeX,
-  Vote,
   X,
 } from "lucide-vue-next";
-import { computed, ref, watch } from "vue";
+import { type Component, computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useElectionStore } from "~/store/electionStore";
 import { useUiStore } from "~/store/uiStore";
+
+interface NavLinkItem {
+  path: string;
+  label: string;
+  icon: Component;
+  description: string;
+  highlight?: boolean;
+}
 
 const route = useRoute();
 const router = useRouter();
@@ -76,7 +82,7 @@ const statusBadge = computed(() => {
   }
 });
 
-const navLinks = [
+const navLinks: NavLinkItem[] = [
   {
     path: "/",
     label: "Início",
@@ -90,13 +96,6 @@ const navLinks = [
     description: "Parâmetros e abertura do pleito",
   },
   {
-    path: "/voting",
-    label: "Cabine de Votação",
-    icon: Vote,
-    description: "Terminal de votação eletrônica",
-    highlight: true,
-  },
-  {
     path: "/results",
     label: "Apuração",
     icon: PieChart,
@@ -107,12 +106,6 @@ const navLinks = [
     label: "Backup",
     icon: Database,
     description: "Segurança e exportação de dados",
-  },
-  {
-    path: "/display",
-    label: "Modo Telão",
-    icon: QrCode,
-    description: "Projeção pública e QR Code",
   },
 ];
 
@@ -164,7 +157,7 @@ function closeMobileMenu() {
       <!-- Links de Navegação (Desktop >= md) -->
       <nav class="hidden md:flex items-center gap-1">
         <router-link
-          v-for="link in navLinks.slice(0, 5)"
+          v-for="link in navLinks"
           :key="link.path"
           :to="link.path"
           class="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg transition-colors"
@@ -177,7 +170,6 @@ function closeMobileMenu() {
           <component
             :is="link.icon"
             class="w-4 h-4"
-            :class="link.highlight ? 'text-emerald-600 dark:text-emerald-400' : ''"
           />
           {{ link.label }}
         </router-link>

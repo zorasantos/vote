@@ -121,7 +121,7 @@ function handleOpenDisplay() {
         @click="handleOpenDisplay"
       >
         <Maximize2 class="w-4 h-4 mr-1.5 text-emerald-600 dark:text-emerald-400" />
-        Abrir Modo Telão (Página Pública)
+        Abrir Modo Telão
       </BaseButton>
     </div>
 
