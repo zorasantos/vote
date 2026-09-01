@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from "vue-router";
 import BackupView from "~/views/BackupView.vue";
 import DashboardView from "~/views/DashboardView.vue";
+import DisplayView from "~/views/DisplayView.vue";
 import ResultsView from "~/views/ResultsView.vue";
 import SetupView from "~/views/SetupView.vue";
 import VoteCompleteView from "~/views/VoteCompleteView.vue";
@@ -26,6 +27,12 @@ const routes = [
     path: "/voted",
     name: "VoteComplete",
     component: VoteCompleteView,
+  },
+  {
+    path: "/display",
+    name: "Display",
+    alias: ["/telao", "/qrcode"],
+    component: DisplayView,
   },
   {
     path: "/results",

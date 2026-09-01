@@ -10,8 +10,8 @@ import {
   Sparkles,
 } from "lucide-vue-next";
 import { computed, onMounted, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 import BaseButton from "~/components/common/BaseButton.vue";
-import VotingQrCodeModal from "~/components/voting/VotingQrCodeModal.vue";
 import {
   downloadQrCodeImage,
   generateQrCodeDataUrl,
@@ -21,6 +21,7 @@ import {
 import { useElectionStore } from "~/store/electionStore";
 import { useUiStore } from "~/store/uiStore";
 
+const router = useRouter();
 const electionStore = useElectionStore();
 const uiStore = useUiStore();
 
@@ -29,7 +30,6 @@ const currentUrl = getCurrentCabinUrl();
 
 // Opção de seleção de URL (padrão é sempre a da Vercel)
 const selectedUrlMode = ref<"vercel" | "current">("vercel");
-const showFullscreenModal = ref(false);
 
 const activeCabinUrl = computed(() => {
   return selectedUrlMode.value === "vercel" ? defaultUrl : currentUrl;
@@ -89,6 +89,10 @@ function handleDownloadQrCode() {
 function handleOpenNewTab() {
   window.open(activeCabinUrl.value, "_blank", "noopener,noreferrer");
 }
+
+function handleOpenDisplay() {
+  window.open("/display", "_blank", "noopener,noreferrer");
+}
 </script>
 
 <template>
@@ -114,15 +118,15 @@ function handleOpenNewTab() {
         </div>
       </div>
 
-      <!-- Botão Expandir / Telão -->
+      <!-- Botão Abrir Modo Apresentação / Telão -->
       <BaseButton
         variant="outline"
         size="sm"
         class="font-bold shrink-0 self-start sm:self-center"
-        @click="showFullscreenModal = true"
+        @click="handleOpenDisplay"
       >
         <Maximize2 class="w-4 h-4 mr-1.5 text-emerald-600 dark:text-emerald-400" />
-        Modo Apresentação / Telão
+        Abrir Modo Telão (Página Pública)
       </BaseButton>
     </div>
 
@@ -132,8 +136,8 @@ function handleOpenNewTab() {
       <div class="md:col-span-5 flex flex-col items-center">
         <div
           class="relative group cursor-pointer p-4 bg-white rounded-2xl border-2 border-slate-200 dark:border-slate-700 shadow-md transition-transform hover:scale-102"
-          @click="showFullscreenModal = true"
-          title="Clique para ampliar o QR Code"
+          @click="handleOpenDisplay"
+          title="Clique para abrir a página pública do Telão"
         >
           <div v-if="isGenerating" class="w-48 h-48 flex items-center justify-center text-slate-400 text-xs">
             Gerando QR Code...
@@ -147,7 +151,7 @@ function handleOpenNewTab() {
 
           <div class="absolute inset-0 bg-slate-900/60 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white p-2">
             <Maximize2 class="w-8 h-8 mb-1" />
-            <span class="text-xs font-bold">Ampliar em Tela Cheia</span>
+            <span class="text-xs font-bold text-center">Abrir Telão em Tela Cheia</span>
           </div>
         </div>
 
@@ -225,11 +229,5 @@ function handleOpenNewTab() {
         </div>
       </div>
     </div>
-
-    <!-- Modal de Tela Cheia / Apresentação -->
-    <VotingQrCodeModal
-      v-model="showFullscreenModal"
-      :cabin-url="activeCabinUrl"
-    />
   </div>
 </template>

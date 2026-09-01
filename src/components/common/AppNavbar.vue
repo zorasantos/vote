@@ -21,7 +21,12 @@ const uiStore = useUiStore();
 const currentPath = computed(() => route.path);
 
 const isKioskScreen = computed(
-  () => route.path === "/voting" || route.path === "/voted",
+  () =>
+    route.path === "/voting" ||
+    route.path === "/voted" ||
+    route.path === "/display" ||
+    route.path === "/telao" ||
+    route.path === "/qrcode",
 );
 
 const statusBadge = computed(() => {
