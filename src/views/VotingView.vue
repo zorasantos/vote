@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   ArrowRight,
-  Lock,
   ShieldCheck,
   Volume2,
   VolumeX,
@@ -10,7 +9,6 @@ import {
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import BaseButton from "~/components/common/BaseButton.vue";
-import PinModal from "~/components/common/PinModal.vue";
 import SingleSlateBallot from "~/components/voting/SingleSlateBallot.vue";
 import VoteConfirmation from "~/components/voting/VoteConfirmation.vue";
 import VoteSuccess from "~/components/voting/VoteSuccess.vue";
@@ -40,7 +38,6 @@ const {
 });
 
 const isSaving = ref(false);
-const showPinModal = ref(false);
 
 const isSingleSlate = computed(
   () => electionStore.currentElection?.mode === "SINGLE_SLATE_APPROVAL",
@@ -135,14 +132,6 @@ useKeyboardShortcuts({
     }
   },
 });
-
-function requestExit() {
-  showPinModal.value = true;
-}
-
-function onPinSuccess() {
-  router.push("/");
-}
 </script>
 
 <template>
@@ -165,7 +154,7 @@ function onPinSuccess() {
         </div>
       </div>
 
-      <!-- Controles do Mesário (Protegidos por PIN para sair) -->
+      <!-- Controles do Mesário / Status -->
       <div class="flex items-center gap-3">
         <div class="hidden sm:flex items-center gap-2 px-3 py-1 bg-slate-800 rounded-full text-xs font-semibold text-slate-300">
           <ShieldCheck class="w-3.5 h-3.5 text-emerald-400" />
@@ -180,15 +169,6 @@ function onPinSuccess() {
         >
           <Volume2 v-if="uiStore.isSoundEnabled" class="w-4 h-4" />
           <VolumeX v-else class="w-4 h-4" />
-        </button>
-
-        <button
-          type="button"
-          class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-bold bg-slate-800 text-slate-300 hover:bg-slate-700 hover:text-white rounded-xl transition-colors cursor-pointer"
-          @click="requestExit"
-        >
-          <Lock class="w-3.5 h-3.5" />
-          Sair da Urna
         </button>
       </div>
     </header>
@@ -261,11 +241,5 @@ function onPinSuccess() {
         />
       </div>
     </main>
-
-    <!-- Modal de PIN do Mesário -->
-    <PinModal
-      v-model="showPinModal"
-      @success="onPinSuccess"
-    />
   </div>
 </template>
