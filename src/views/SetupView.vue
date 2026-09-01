@@ -5,6 +5,7 @@ import { useRouter } from "vue-router";
 import BaseButton from "~/components/common/BaseButton.vue";
 import BaseModal from "~/components/common/BaseModal.vue";
 import ElectionConfigForm from "~/components/setup/ElectionConfigForm.vue";
+import VotingQrCodeCard from "~/components/voting/VotingQrCodeCard.vue";
 
 import type { Election } from "~/domain/types";
 
@@ -134,6 +135,9 @@ async function handleOpenElection() {
         @save="handleSaveElection"
       />
     </div>
+
+    <!-- Card 3: QR Code da Cabine -->
+    <VotingQrCodeCard />
 
     <!-- Modal de Confirmação de Abertura -->
     <BaseModal

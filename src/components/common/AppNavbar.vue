@@ -45,7 +45,6 @@ const statusBadge = computed(() => {
         class:
           "bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300",
       };
-    case "DRAFT":
     default:
       return {
         label: "Configuração (Rascunho)",

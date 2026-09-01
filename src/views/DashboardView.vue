@@ -14,6 +14,7 @@ import { useRouter } from "vue-router";
 import BaseButton from "~/components/common/BaseButton.vue";
 import BaseModal from "~/components/common/BaseModal.vue";
 import PinModal from "~/components/common/PinModal.vue";
+import VotingQrCodeCard from "~/components/voting/VotingQrCodeCard.vue";
 import { useElectionStore } from "~/store/electionStore";
 import { useUiStore } from "~/store/uiStore";
 
@@ -237,6 +238,9 @@ async function handleConfirmCloseElection() {
           </BaseButton>
         </div>
       </div>
+
+      <!-- Card do QR Code para Votação dos Associados -->
+      <VotingQrCodeCard />
 
       <!-- Modal de Confirmação de Encerramento do Pleito -->
       <BaseModal
