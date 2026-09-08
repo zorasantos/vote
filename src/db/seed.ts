@@ -1,23 +1,27 @@
 import type { Election, Slate } from "~/domain/types";
-import { db } from "./database";
+import { mapElectionToRow, mapSlateToRow, supabase } from "./supabase";
 
 export async function seedSingleSlateElection(): Promise<{
   election: Election;
   slate: Slate;
 }> {
-  await db.transaction(
-    "rw",
-    db.elections,
-    db.slates,
-    db.votes,
-    db.voters,
-    async () => {
-      await db.votes.clear();
-      await db.voters.clear();
-      await db.slates.clear();
-      await db.elections.clear();
-    },
-  );
+  // Limpa tabelas no Supabase
+  await supabase
+    .from("votes")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabase
+    .from("voters")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabase
+    .from("slates")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
+  await supabase
+    .from("elections")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000");
 
   const electionId = crypto.randomUUID();
   const now = new Date().toISOString();
@@ -47,8 +51,18 @@ export async function seedSingleSlateElection(): Promise<{
     createdAt: now,
   };
 
-  await db.elections.add(election);
-  await db.slates.add(slate);
+  const electionRow = mapElectionToRow(election);
+  const slateRow = mapSlateToRow(slate);
+
+  const { error: electionError } = await supabase
+    .from("elections")
+    .insert(electionRow);
+  if (electionError)
+    throw new Error(`Falha ao criar eleição: ${electionError.message}`);
+
+  const { error: slateError } = await supabase.from("slates").insert(slateRow);
+  if (slateError)
+    throw new Error(`Falha ao criar chapa: ${slateError.message}`);
 
   return { election, slate };
 }

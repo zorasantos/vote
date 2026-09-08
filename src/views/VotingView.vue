@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import {
+  AlertCircle,
   ArrowRight,
+  Clock,
+  Lock,
+  RotateCcw,
   ShieldCheck,
   Volume2,
   VolumeX,
-  Vote,
 } from "lucide-vue-next";
-import { computed, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import BaseButton from "~/components/common/BaseButton.vue";
 import SingleSlateBallot from "~/components/voting/SingleSlateBallot.vue";
@@ -38,6 +41,7 @@ const {
 });
 
 const isSaving = ref(false);
+const hasAlreadyVotedOnThisDevice = ref(false);
 
 const isSingleSlate = computed(
   () => electionStore.currentElection?.mode === "SINGLE_SLATE_APPROVAL",
@@ -56,6 +60,29 @@ const currentSlate = computed<Slate>(() => {
   );
 });
 
+function checkDeviceVoteStatus() {
+  if (electionStore.currentElection) {
+    const key = `voted_election_${electionStore.currentElection.id}`;
+    if (localStorage.getItem(key) === "true") {
+      hasAlreadyVotedOnThisDevice.value = true;
+    }
+  }
+}
+
+watch(
+  () => electionStore.currentElection?.id,
+  () => {
+    checkDeviceVoteStatus();
+  },
+);
+
+onMounted(async () => {
+  if (!electionStore.currentElection) {
+    await electionStore.loadActiveElection();
+  }
+  checkDeviceVoteStatus();
+});
+
 function handleSelectChoice(choice: VoteChoice) {
   uiStore.playBeep("confirm");
   selectChoice(choice);
@@ -66,6 +93,12 @@ async function handleConfirmVote() {
   try {
     await confirmVote(async (choice) => {
       await electionStore.registerVote(choice);
+      if (electionStore.currentElection) {
+        localStorage.setItem(
+          `voted_election_${electionStore.currentElection.id}`,
+          "true",
+        );
+      }
       uiStore.playBeep("vote");
     });
   } catch (e) {
@@ -137,14 +170,14 @@ useKeyboardShortcuts({
 <template>
   <div class="min-h-screen flex flex-col bg-slate-100 dark:bg-slate-950 select-none">
     <!-- Barra Superior da Cabine (Kiosk Bar) -->
-    <header class="h-16 px-6 bg-slate-900 text-white flex items-center justify-between shadow-md shrink-0">
+    <header class="h-16 px-4 sm:px-6 bg-slate-900 text-white flex items-center justify-between shadow-md shrink-0">
       <div class="flex items-center gap-3">
         <img
           :src="electionStore.currentElection?.associationLogo || '/ace-logo.jpg'"
           alt="Logo da Associação"
-          class="w-9 h-9 object-contain rounded-xl bg-white p-1 border border-slate-700 shadow-xs"
+          class="w-9 h-9 object-contain rounded-xl bg-white p-1 border border-slate-700 shadow-xs shrink-0"
         />
-        <div>
+        <div class="min-w-0">
           <h1 class="text-sm sm:text-base font-bold truncate max-w-xs sm:max-w-md">
             {{ electionStore.currentElection?.associationName || 'Associação Cearense de Escritores - ACE' }}
           </h1>
@@ -175,9 +208,74 @@ useKeyboardShortcuts({
 
     <!-- Conteúdo Central da Cabine -->
     <main class="flex-1 flex items-center justify-center p-4 sm:p-8">
-      <!-- 1. Estado READY: Tela de Espera do Votante -->
+      <!-- Caso A: Este aparelho celular já registrou voto nesta eleição -->
       <div
-        v-if="step === 'READY'"
+        v-if="hasAlreadyVotedOnThisDevice"
+        class="max-w-md w-full text-center py-10 px-6 bg-white dark:bg-slate-900 rounded-3xl border-2 border-emerald-200 dark:border-emerald-800/50 shadow-2xl space-y-6"
+      >
+        <div class="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 dark:bg-emerald-950/80 rounded-full text-emerald-600 dark:text-emerald-400 shadow-sm">
+          <ShieldCheck class="w-12 h-12" />
+        </div>
+        <div class="space-y-2">
+          <h2 class="text-2xl font-black text-slate-900 dark:text-white">
+            Voto Já Registrado!
+          </h2>
+          <p class="text-sm text-slate-600 dark:text-slate-400">
+            Você já participou desta votação pelo seu aparelho. Cada associado possui direito a um voto anônimo e único.
+          </p>
+        </div>
+        <div class="pt-2">
+          <BaseButton
+            variant="outline"
+            size="md"
+            class="w-full justify-center"
+            @click="router.push('/voted')"
+          >
+            Ver Comprovante de Votação
+          </BaseButton>
+        </div>
+      </div>
+
+      <!-- Caso B: A eleição ainda NÃO foi aberta pela mesa diretora -->
+      <div
+        v-else-if="electionStore.isDraft"
+        class="max-w-md w-full text-center py-10 px-6 bg-white dark:bg-slate-900 rounded-3xl border-2 border-amber-200 dark:border-amber-800/50 shadow-2xl space-y-6"
+      >
+        <div class="inline-flex items-center justify-center w-20 h-20 bg-amber-100 dark:bg-amber-950/80 rounded-full text-amber-600 dark:text-amber-400 shadow-sm animate-pulse">
+          <Clock class="w-12 h-12" />
+        </div>
+        <div class="space-y-2">
+          <h2 class="text-2xl font-black text-slate-900 dark:text-white">
+            Aguardando Início da Votação
+          </h2>
+          <p class="text-sm text-slate-600 dark:text-slate-400">
+            A mesa diretora ainda não abriu o pleito. Mantenha esta página aberta: assim que a votação for iniciada, a cédula aparecerá automaticamente.
+          </p>
+        </div>
+      </div>
+
+      <!-- Caso C: A eleição foi ENCERRADA pela mesa diretora -->
+      <div
+        v-else-if="electionStore.isClosed"
+        class="max-w-md w-full text-center py-10 px-6 bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 shadow-2xl space-y-6"
+      >
+        <div class="inline-flex items-center justify-center w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full text-slate-600 dark:text-slate-400 shadow-sm">
+          <Lock class="w-12 h-12" />
+        </div>
+        <div class="space-y-2">
+          <h2 class="text-2xl font-black text-slate-900 dark:text-white">
+            Votação Encerrada
+          </h2>
+          <p class="text-sm text-slate-600 dark:text-slate-400">
+            O período de votação desta eleição foi encerrado pela mesa diretora. Os votos estão em fase de apuração oficial.
+          </p>
+        </div>
+      </div>
+
+      <!-- Caso D: Eleição ABERTA (Fluxo normal da cabine no celular) -->
+      <!-- 1. Estado READY: Tela de Espera / Iniciar no Celular -->
+      <div
+        v-else-if="step === 'READY'"
         class="max-w-xl w-full text-center py-10 px-6 bg-white dark:bg-slate-900 rounded-3xl border-2 border-slate-200 dark:border-slate-800 shadow-2xl space-y-6"
       >
         <div class="relative inline-block mx-auto">
@@ -196,7 +294,7 @@ useKeyboardShortcuts({
             CABINE DE VOTAÇÃO
           </h2>
           <p class="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-            Por favor, aproxime-se da cabine para registrar o seu voto. O voto é secreto e inviolável.
+            Você está prestes a votar pela eleição da Mesa Diretora. O voto é anônimo, secreto e inviolável.
           </p>
         </div>
 
@@ -207,7 +305,7 @@ useKeyboardShortcuts({
             class="w-full justify-center text-xl font-black py-6 tracking-wide shadow-xl hover:scale-102"
             @click="startSession"
           >
-            INICIAR VOTAÇÃO (Espaço / Enter)
+            INICIAR VOTAÇÃO
             <ArrowRight class="w-6 h-6 ml-2" />
           </BaseButton>
         </div>

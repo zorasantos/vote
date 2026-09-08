@@ -79,14 +79,14 @@ async function handleFileSelected(e: Event) {
 
     if (
       confirm(
-        `Deseja restaurar a eleição "${validatedBackup.election.title}" com ${validatedBackup.votes.length} voto(s)? Os dados atuais do navegador serão substituídos.`,
+        `Deseja restaurar a eleição "${validatedBackup.election.title}" com ${validatedBackup.votes.length} voto(s)? Os dados atuais no banco de dados serão substituídos.`,
       )
     ) {
       await electionStore.restoreFromBackup(validatedBackup);
       uiStore.addToast(
         "success",
         "Backup Restaurado!",
-        "Os dados foram recuperados e validados.",
+        "Os dados foram recuperados e validados no banco de dados.",
       );
     }
   } catch (e: any) {
@@ -112,7 +112,7 @@ async function handleConfirmReset() {
     uiStore.addToast(
       "info",
       "Banco Zerado!",
-      "Todos os dados locais foram apagados.",
+      "Todos os dados da eleição foram apagados do banco.",
     );
   } catch (e: any) {
     uiStore.addToast("error", "Erro ao zerar banco", e.message);
@@ -202,10 +202,10 @@ async function handleConfirmReset() {
         </div>
         <div>
           <h2 class="text-base font-bold text-rose-900 dark:text-rose-200">
-            Zerar Banco de Dados Local
+            Zerar Banco de Dados da Eleição
           </h2>
           <p class="text-xs text-rose-700 dark:text-rose-300 mt-0.5">
-            Apaga permanentemente todas as eleições, chapas e votos armazenados no IndexedDB deste navegador. Certifique-se de ter feito backup antes.
+            Apaga permanentemente todas as eleições, chapas e votos cadastrados no banco de dados. Certifique-se de ter feito backup antes.
           </p>
         </div>
       </div>
@@ -230,7 +230,7 @@ async function handleConfirmReset() {
     <BaseModal
       v-model="showConfirmResetModal"
       title="Tem certeza absoluta?"
-      description="Esta ação não pode ser desfeita e removerá todos os registros do navegador."
+      description="Esta ação não pode ser desfeita e removerá todos os registros do banco de dados."
       max-width="sm"
     >
       <template #footer>

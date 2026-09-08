@@ -81,6 +81,20 @@ onMounted(async () => {
           </p>
         </div>
       </div>
+
+      <!-- Placar de Votos em Tempo Real -->
+      <div class="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-xs">
+        <div class="relative flex h-3 w-3">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+        </div>
+        <div class="text-right">
+          <p class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Votos na Urna</p>
+          <p class="text-xl sm:text-2xl font-black text-emerald-700 leading-none">
+            {{ electionStore.totalVotesCount }}
+          </p>
+        </div>
+      </div>
     </header>
 
     <!-- Conteúdo Central: QR Code em Escala Gigante e Passos -->

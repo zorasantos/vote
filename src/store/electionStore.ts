@@ -1,6 +1,21 @@
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { defineStore } from "pinia";
 import { computed, ref } from "vue";
-import { db } from "~/db/database";
+import {
+  type ElectionRow,
+  mapElectionFromRow,
+  mapElectionToRow,
+  mapSlateFromRow,
+  mapSlateToRow,
+  mapVoteFromRow,
+  mapVoterFromRow,
+  mapVoterToRow,
+  mapVoteToRow,
+  type SlateRow,
+  supabase,
+  type VoteRow,
+  type VoterRow,
+} from "~/db/supabase";
 import type {
   Election,
   ElectionBackup,
@@ -25,6 +40,8 @@ export const useElectionStore = defineStore("election", () => {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
   const lastCalculatedHash = ref<string>("");
+
+  let realtimeChannel: RealtimeChannel | null = null;
 
   const isDraft = computed(() => currentElection.value?.status === "DRAFT");
   const isOpen = computed(() => currentElection.value?.status === "OPEN");
@@ -53,12 +70,59 @@ export const useElectionStore = defineStore("election", () => {
     return hash;
   }
 
+  function setupRealtime(electionId: string) {
+    if (realtimeChannel) {
+      supabase.removeChannel(realtimeChannel);
+      realtimeChannel = null;
+    }
+
+    realtimeChannel = supabase
+      .channel(`election-realtime-${electionId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "votes",
+          filter: `election_id=eq.${electionId}`,
+        },
+        async (payload) => {
+          const newVote = mapVoteFromRow(payload.new as VoteRow);
+          if (!votes.value.some((v) => v.id === newVote.id)) {
+            votes.value.push(newVote);
+            await updateHash();
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "elections",
+          filter: `id=eq.${electionId}`,
+        },
+        async (payload) => {
+          const updatedElection = mapElectionFromRow(
+            payload.new as ElectionRow,
+          );
+          currentElection.value = updatedElection;
+          await updateHash();
+        },
+      )
+      .subscribe();
+  }
+
   async function ensureDefaultSlate(electionId: string): Promise<Slate> {
-    const existing = await db.slates
-      .where("electionId")
-      .equals(electionId)
-      .first();
-    if (existing) return existing;
+    const { data: existingRows } = await supabase
+      .from("slates")
+      .select("*")
+      .eq("election_id", electionId)
+      .limit(1);
+
+    if (existingRows && existingRows.length > 0) {
+      return mapSlateFromRow(existingRows[0] as SlateRow);
+    }
 
     const defaultSlate: Slate = {
       id: crypto.randomUUID(),
@@ -69,7 +133,14 @@ export const useElectionStore = defineStore("election", () => {
       members: [],
       createdAt: new Date().toISOString(),
     };
-    await db.slates.add(defaultSlate);
+
+    const slateRow = mapSlateToRow(defaultSlate);
+    const { error: insertError } = await supabase
+      .from("slates")
+      .insert(slateRow);
+    if (insertError) {
+      console.error("Erro ao criar chapa padrão no Supabase:", insertError);
+    }
     return defaultSlate;
   }
 
@@ -77,7 +148,21 @@ export const useElectionStore = defineStore("election", () => {
     isLoading.value = true;
     error.value = null;
     try {
-      const allElections = await db.elections.toArray();
+      const { data: electionRows, error: fetchError } = await supabase
+        .from("elections")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (fetchError) {
+        throw new Error(
+          `Erro ao buscar eleições no Supabase: ${fetchError.message}`,
+        );
+      }
+
+      const allElections: Election[] = (electionRows || []).map((r) =>
+        mapElectionFromRow(r as ElectionRow),
+      );
+
       if (allElections.length === 0) {
         // Cria automaticamente eleição padrão simplificada
         const now = new Date().toISOString();
@@ -95,7 +180,12 @@ export const useElectionStore = defineStore("election", () => {
           presentMembers: 50,
           createdAt: now,
         };
-        await db.elections.add(newElection);
+
+        const { error: createError } = await supabase
+          .from("elections")
+          .insert(mapElectionToRow(newElection));
+        if (createError) throw new Error(createError.message);
+
         const defaultSlate = await ensureDefaultSlate(newElection.id);
 
         currentElection.value = newElection;
@@ -103,15 +193,16 @@ export const useElectionStore = defineStore("election", () => {
         votes.value = [];
         voters.value = [];
         await updateHash();
+        setupRealtime(newElection.id);
         return;
       }
 
       const active =
         allElections.find((e) => e.status === "OPEN") ||
         allElections.find((e) => e.status === "DRAFT") ||
-        allElections[allElections.length - 1];
+        allElections[0];
 
-      // Força a atualização do nome e logotipo para a Associação Cearense de Escritores - ACE
+      // Padroniza Associação Cearense de Escritores - ACE se necessário
       if (
         active.associationName !== "Associação Cearense de Escritores - ACE" ||
         active.associationLogo !== "/ace-logo.jpg"
@@ -125,36 +216,56 @@ export const useElectionStore = defineStore("election", () => {
         ) {
           active.title = "Eleição da Mesa Diretora — Biênio 2026/2028";
         }
-        await db.elections.put(active);
+        await supabase
+          .from("elections")
+          .update(mapElectionToRow(active))
+          .eq("id", active.id);
       }
 
       currentElection.value = active;
-      let loadedSlates = await db.slates
-        .where("electionId")
-        .equals(active.id)
-        .toArray();
+
+      // Busca chapas
+      const { data: slateRows } = await supabase
+        .from("slates")
+        .select("*")
+        .eq("election_id", active.id)
+        .order("number", { ascending: true });
+
+      let loadedSlates = (slateRows || []).map((r) =>
+        mapSlateFromRow(r as SlateRow),
+      );
 
       if (loadedSlates.length === 0) {
         const defaultSlate = await ensureDefaultSlate(active.id);
         loadedSlates = [defaultSlate];
       }
-
       slates.value = loadedSlates;
-      votes.value = await db.votes
-        .where("electionId")
-        .equals(active.id)
-        .toArray();
-      voters.value = await db.voters
-        .where("electionId")
-        .equals(active.id)
-        .toArray();
+
+      // Busca votos
+      const { data: voteRows } = await supabase
+        .from("votes")
+        .select("*")
+        .eq("election_id", active.id)
+        .order("created_at", { ascending: true });
+
+      votes.value = (voteRows || []).map((r) => mapVoteFromRow(r as VoteRow));
+
+      // Busca votantes / livro de presenças
+      const { data: voterRows } = await supabase
+        .from("voters")
+        .select("*")
+        .eq("election_id", active.id)
+        .order("registered_at", { ascending: true });
+
+      voters.value = (voterRows || []).map((r) =>
+        mapVoterFromRow(r as VoterRow),
+      );
 
       await updateHash();
+      setupRealtime(active.id);
     } catch (e: unknown) {
       error.value =
-        e instanceof Error
-          ? e.message
-          : "Erro ao carregar dados do banco local.";
+        e instanceof Error ? e.message : "Erro ao carregar dados do Supabase.";
     } finally {
       isLoading.value = false;
     }
@@ -182,10 +293,16 @@ export const useElectionStore = defineStore("election", () => {
           presentMembers: data.presentMembers ?? 50,
           createdAt: now,
         };
-        await db.elections.add(newElection);
+
+        const { error: insertErr } = await supabase
+          .from("elections")
+          .insert(mapElectionToRow(newElection));
+        if (insertErr) throw new Error(insertErr.message);
+
         const defaultSlate = await ensureDefaultSlate(newElection.id);
         currentElection.value = newElection;
         slates.value = [defaultSlate];
+        setupRealtime(newElection.id);
       } else {
         if (currentElection.value.status === "CLOSED") {
           throw new Error("Eleição encerrada não pode ser modificada.");
@@ -198,7 +315,13 @@ export const useElectionStore = defineStore("election", () => {
           mode: "SINGLE_SLATE_APPROVAL",
           allowBlankVote: false,
         };
-        await db.elections.put(updated);
+
+        const { error: updateErr } = await supabase
+          .from("elections")
+          .update(mapElectionToRow(updated))
+          .eq("id", updated.id);
+        if (updateErr) throw new Error(updateErr.message);
+
         currentElection.value = updated;
         if (slates.value.length === 0) {
           const defaultSlate = await ensureDefaultSlate(updated.id);
@@ -236,7 +359,11 @@ export const useElectionStore = defineStore("election", () => {
       createdAt: new Date().toISOString(),
     };
 
-    await db.slates.add(newSlate);
+    const { error: insertErr } = await supabase
+      .from("slates")
+      .insert(mapSlateToRow(newSlate));
+    if (insertErr) throw new Error(insertErr.message);
+
     slates.value.push(newSlate);
     await updateHash();
     return newSlate;
@@ -256,7 +383,12 @@ export const useElectionStore = defineStore("election", () => {
     if (idx === -1) throw new Error("Chapa não encontrada.");
 
     const updated = { ...slates.value[idx], ...slateData };
-    await db.slates.put(updated);
+    const { error: updateErr } = await supabase
+      .from("slates")
+      .update(mapSlateToRow(updated))
+      .eq("id", slateId);
+    if (updateErr) throw new Error(updateErr.message);
+
     slates.value[idx] = updated;
     await updateHash();
   }
@@ -266,7 +398,12 @@ export const useElectionStore = defineStore("election", () => {
       throw new Error("Chapas só podem ser removidas em rascunho.");
     }
 
-    await db.slates.delete(slateId);
+    const { error: deleteErr } = await supabase
+      .from("slates")
+      .delete()
+      .eq("id", slateId);
+    if (deleteErr) throw new Error(deleteErr.message);
+
     slates.value = slates.value.filter((s) => s.id !== slateId);
     await updateHash();
   }
@@ -289,13 +426,18 @@ export const useElectionStore = defineStore("election", () => {
     validateElectionForOpening(currentElection.value, slates.value);
 
     const now = new Date().toISOString();
+    const { error: updateErr } = await supabase
+      .from("elections")
+      .update({
+        status: "OPEN",
+        opened_at: now,
+      })
+      .eq("id", currentElection.value.id);
+
+    if (updateErr) throw new Error(updateErr.message);
+
     currentElection.value.status = "OPEN";
     currentElection.value.openedAt = now;
-
-    await db.elections.update(currentElection.value.id, {
-      status: "OPEN",
-      openedAt: now,
-    });
     await updateHash();
   }
 
@@ -306,13 +448,18 @@ export const useElectionStore = defineStore("election", () => {
     }
 
     const now = new Date().toISOString();
+    const { error: updateErr } = await supabase
+      .from("elections")
+      .update({
+        status: "CLOSED",
+        closed_at: now,
+      })
+      .eq("id", currentElection.value.id);
+
+    if (updateErr) throw new Error(updateErr.message);
+
     currentElection.value.status = "CLOSED";
     currentElection.value.closedAt = now;
-
-    await db.elections.update(currentElection.value.id, {
-      status: "CLOSED",
-      closedAt: now,
-    });
     await updateHash();
   }
 
@@ -328,27 +475,43 @@ export const useElectionStore = defineStore("election", () => {
       createdAt: new Date().toISOString(),
     };
 
-    await db.votes.add(newVote);
-    votes.value.push(newVote);
+    const { error: insertErr } = await supabase
+      .from("votes")
+      .insert(mapVoteToRow(newVote));
+
+    if (insertErr) {
+      throw new Error(
+        `Falha ao registrar voto no Supabase: ${insertErr.message}`,
+      );
+    }
+
+    // Se o Realtime ainda não tiver entregue o evento localmente, adiciona
+    if (!votes.value.some((v) => v.id === newVote.id)) {
+      votes.value.push(newVote);
+    }
     await updateHash();
   }
 
   async function resetDatabase(): Promise<void> {
     isLoading.value = true;
     try {
-      await db.transaction(
-        "rw",
-        db.elections,
-        db.slates,
-        db.votes,
-        db.voters,
-        async () => {
-          await db.votes.clear();
-          await db.voters.clear();
-          await db.slates.clear();
-          await db.elections.clear();
-        },
-      );
+      await supabase
+        .from("votes")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase
+        .from("voters")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase
+        .from("slates")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase
+        .from("elections")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+
       currentElection.value = null;
       slates.value = [];
       votes.value = [];
@@ -362,31 +525,61 @@ export const useElectionStore = defineStore("election", () => {
   async function restoreFromBackup(backup: ElectionBackup): Promise<void> {
     isLoading.value = true;
     try {
-      await db.transaction(
-        "rw",
-        db.elections,
-        db.slates,
-        db.votes,
-        db.voters,
-        async () => {
-          await db.votes.clear();
-          await db.voters.clear();
-          await db.slates.clear();
-          await db.elections.clear();
+      // Limpa dados anteriores
+      await supabase
+        .from("votes")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase
+        .from("voters")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase
+        .from("slates")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase
+        .from("elections")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
 
-          await db.elections.add(backup.election);
-          if (backup.slates.length > 0) await db.slates.bulkAdd(backup.slates);
-          if (backup.votes.length > 0) await db.votes.bulkAdd(backup.votes);
-          if (backup.voters && backup.voters.length > 0)
-            await db.voters.bulkAdd(backup.voters);
-        },
-      );
+      // Insere eleição
+      const electionRow = mapElectionToRow(backup.election);
+      const { error: eErr } = await supabase
+        .from("elections")
+        .insert(electionRow);
+      if (eErr) throw new Error(`Erro ao restaurar eleição: ${eErr.message}`);
+
+      // Insere chapas
+      if (backup.slates.length > 0) {
+        const slateRows = backup.slates.map((s) => mapSlateToRow(s));
+        const { error: sErr } = await supabase.from("slates").insert(slateRows);
+        if (sErr) throw new Error(`Erro ao restaurar chapas: ${sErr.message}`);
+      }
+
+      // Insere votos
+      if (backup.votes.length > 0) {
+        const voteRows = backup.votes.map((v) => mapVoteToRow(v));
+        const { error: vErr } = await supabase.from("votes").insert(voteRows);
+        if (vErr) throw new Error(`Erro ao restaurar votos: ${vErr.message}`);
+      }
+
+      // Insere votantes se existirem
+      if (backup.voters && backup.voters.length > 0) {
+        const voterRows = backup.voters.map((vt) => mapVoterToRow(vt));
+        const { error: vtErr } = await supabase
+          .from("voters")
+          .insert(voterRows);
+        if (vtErr)
+          throw new Error(`Erro ao restaurar votantes: ${vtErr.message}`);
+      }
 
       currentElection.value = backup.election;
       slates.value = backup.slates;
       votes.value = backup.votes;
       voters.value = backup.voters || [];
       await updateHash();
+      setupRealtime(backup.election.id);
     } finally {
       isLoading.value = false;
     }
