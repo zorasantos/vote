@@ -45,9 +45,9 @@ async function handleOpenElection() {
     uiStore.addToast(
       "success",
       "Votação Aberta com Sucesso!",
-      "A cabine de votação está pronta para receber os votos dos associados.",
+      "A eleição foi iniciada. Aponte a câmera do celular para o QR Code para registrar seu voto.",
     );
-    router.push("/voting");
+    router.push("/");
   } catch (e) {
     const errorMsg = e instanceof Error ? e.message : "Erro desconhecido";
     uiStore.addToast("error", "Não foi possível abrir a votação", errorMsg);

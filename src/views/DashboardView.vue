@@ -6,8 +6,8 @@ import {
   Settings2,
   ShieldCheck,
   StopCircle,
+  Tv,
   Users,
-  Vote,
 } from "lucide-vue-next";
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
@@ -51,10 +51,6 @@ function handleLockDashboard() {
   isUnlocked.value = false;
   sessionStorage.removeItem("operator_unlocked");
   uiStore.addToast("info", "Painel Bloqueado", "Acesso restrito ao mesário.");
-}
-
-function handleOpenVoting() {
-  router.push("/voting");
 }
 
 function handleRequestCloseElection() {
@@ -195,13 +191,13 @@ async function handleConfirmCloseElection() {
         <div class="flex flex-wrap items-center gap-3 pt-6">
           <template v-if="electionStore.isOpen">
             <BaseButton
-              variant="success"
+              variant="primary"
               size="xl"
-              class="shadow-lg shadow-emerald-900/20 font-black tracking-wide py-4 px-8 text-lg"
-              @click="handleOpenVoting"
+              class="shadow-lg shadow-teal-900/20 font-black tracking-wide py-4 px-8 text-lg"
+              @click="router.push('/display')"
             >
-              <Vote class="w-6 h-6 mr-2" />
-              ENTRAR NA CABINE DE VOTAÇÃO
+              <Tv class="w-6 h-6 mr-2" />
+              PROJETAR TELÃO (QR CODE)
             </BaseButton>
 
             <BaseButton
