@@ -212,7 +212,7 @@ async function handleConfirmCloseElection() {
           </template>
 
           <BaseButton
-            v-else-if="electionStore.isDraft"
+            v-else-if="electionStore.isDraft || !electionStore.currentElection"
             variant="primary"
             size="lg"
             class="font-bold py-3.5 px-6"

@@ -144,131 +144,94 @@ export const useElectionStore = defineStore("election", () => {
     return defaultSlate;
   }
 
+  let loadPromise: Promise<void> | null = null;
+
   async function loadActiveElection(): Promise<void> {
-    isLoading.value = true;
-    error.value = null;
-    try {
-      const { data: electionRows, error: fetchError } = await supabase
-        .from("elections")
-        .select("*")
-        .order("created_at", { ascending: false });
+    if (loadPromise) return loadPromise;
 
-      if (fetchError) {
-        throw new Error(
-          `Erro ao buscar eleições no Supabase: ${fetchError.message}`,
-        );
-      }
-
-      const allElections: Election[] = (electionRows || []).map((r) =>
-        mapElectionFromRow(r as ElectionRow),
-      );
-
-      if (allElections.length === 0) {
-        // Cria automaticamente eleição padrão simplificada
-        const now = new Date().toISOString();
-        const newElection: Election = {
-          id: crypto.randomUUID(),
-          title: "Eleição da Mesa Diretora — Biênio 2026/2028",
-          associationName: "Associação Cearense de Escritores - ACE",
-          associationLogo: "/ace-logo.jpg",
-          date: now.split("T")[0],
-          status: "DRAFT",
-          mode: "SINGLE_SLATE_APPROVAL",
-          quorumBasis: "VALID_VOTES",
-          allowBlankVote: false,
-          totalMembers: 100,
-          presentMembers: 50,
-          createdAt: now,
-        };
-
-        const { error: createError } = await supabase
+    loadPromise = (async () => {
+      isLoading.value = true;
+      error.value = null;
+      try {
+        const { data: electionRows, error: fetchError } = await supabase
           .from("elections")
-          .insert(mapElectionToRow(newElection));
-        if (createError) throw new Error(createError.message);
+          .select("*")
+          .order("created_at", { ascending: false });
 
-        const defaultSlate = await ensureDefaultSlate(newElection.id);
-
-        currentElection.value = newElection;
-        slates.value = [defaultSlate];
-        votes.value = [];
-        voters.value = [];
-        await updateHash();
-        setupRealtime(newElection.id);
-        return;
-      }
-
-      const active =
-        allElections.find((e) => e.status === "OPEN") ||
-        allElections.find((e) => e.status === "DRAFT") ||
-        allElections[0];
-
-      // Padroniza Associação Cearense de Escritores - ACE se necessário
-      if (
-        active.associationName !== "Associação Cearense de Escritores - ACE" ||
-        active.associationLogo !== "/ace-logo.jpg"
-      ) {
-        active.associationName = "Associação Cearense de Escritores - ACE";
-        active.associationLogo = "/ace-logo.jpg";
-        if (
-          !active.title ||
-          active.title === "Votação da Mesa Diretora" ||
-          active.title === "Votação da Mesa Diretora — Chapa 01"
-        ) {
-          active.title = "Eleição da Mesa Diretora — Biênio 2026/2028";
+        if (fetchError) {
+          throw new Error(
+            `Erro ao buscar eleições no Supabase: ${fetchError.message}`,
+          );
         }
-        await supabase
-          .from("elections")
-          .update(mapElectionToRow(active))
-          .eq("id", active.id);
+
+        const allElections: Election[] = (electionRows || []).map((r) =>
+          mapElectionFromRow(r as ElectionRow),
+        );
+
+        if (allElections.length === 0) {
+          // Banco vazio: NÃO SALVA NADA NO BANCO!
+          // Mantém as variáveis zeradas até o usuário clicar em "Salvar Configuração"
+          currentElection.value = null;
+          slates.value = [];
+          votes.value = [];
+          voters.value = [];
+          lastCalculatedHash.value = "";
+          return;
+        }
+
+        const active =
+          allElections.find((e) => e.status === "OPEN") ||
+          allElections.find((e) => e.status === "DRAFT") ||
+          allElections[0];
+
+        currentElection.value = active;
+
+        // Busca chapas apenas com SELECT (sem inserção automática)
+        const { data: slateRows } = await supabase
+          .from("slates")
+          .select("*")
+          .eq("election_id", active.id)
+          .order("created_at", { ascending: true });
+
+        slates.value = (slateRows || []).map((r) =>
+          mapSlateFromRow(r as SlateRow),
+        );
+
+        // Busca votos apenas com SELECT
+        const { data: voteRows } = await supabase
+          .from("votes")
+          .select("*")
+          .eq("election_id", active.id)
+          .order("created_at", { ascending: true });
+
+        votes.value = (voteRows || []).map((r) => mapVoteFromRow(r as VoteRow));
+
+        // Busca votantes / livro de presenças
+        const { data: voterRows } = await supabase
+          .from("voters")
+          .select("*")
+          .eq("election_id", active.id)
+          .order("registered_at", { ascending: true });
+
+        voters.value = (voterRows || []).map((r) =>
+          mapVoterFromRow(r as VoterRow),
+        );
+
+        await updateHash();
+        setupRealtime(active.id);
+      } catch (e: unknown) {
+        error.value =
+          e instanceof Error
+            ? e.message
+            : "Erro ao carregar dados do Supabase.";
+      } finally {
+        isLoading.value = false;
       }
+    })().finally(() => {
+      loadPromise = null;
+    });
 
-      currentElection.value = active;
-
-      // Busca chapas
-      const { data: slateRows } = await supabase
-        .from("slates")
-        .select("*")
-        .eq("election_id", active.id)
-        .order("number", { ascending: true });
-
-      let loadedSlates = (slateRows || []).map((r) =>
-        mapSlateFromRow(r as SlateRow),
-      );
-
-      if (loadedSlates.length === 0) {
-        const defaultSlate = await ensureDefaultSlate(active.id);
-        loadedSlates = [defaultSlate];
-      }
-      slates.value = loadedSlates;
-
-      // Busca votos
-      const { data: voteRows } = await supabase
-        .from("votes")
-        .select("*")
-        .eq("election_id", active.id)
-        .order("created_at", { ascending: true });
-
-      votes.value = (voteRows || []).map((r) => mapVoteFromRow(r as VoteRow));
-
-      // Busca votantes / livro de presenças
-      const { data: voterRows } = await supabase
-        .from("voters")
-        .select("*")
-        .eq("election_id", active.id)
-        .order("registered_at", { ascending: true });
-
-      voters.value = (voterRows || []).map((r) =>
-        mapVoterFromRow(r as VoterRow),
-      );
-
-      await updateHash();
-      setupRealtime(active.id);
-    } catch (e: unknown) {
-      error.value =
-        e instanceof Error ? e.message : "Erro ao carregar dados do Supabase.";
-    } finally {
-      isLoading.value = false;
-    }
+    return loadPromise;
   }
 
   async function createOrUpdateElection(
@@ -277,6 +240,21 @@ export const useElectionStore = defineStore("election", () => {
     isLoading.value = true;
     error.value = null;
     try {
+      // Se não há eleição em memória, busca se já existe uma no Supabase antes de criar
+      if (!currentElection.value) {
+        const { data: existingElections } = await supabase
+          .from("elections")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (existingElections && existingElections.length > 0) {
+          currentElection.value = mapElectionFromRow(
+            existingElections[0] as ElectionRow,
+          );
+        }
+      }
+
       const now = new Date().toISOString();
       if (!currentElection.value) {
         const newElection: Election = {
@@ -494,29 +472,42 @@ export const useElectionStore = defineStore("election", () => {
 
   async function resetDatabase(): Promise<void> {
     isLoading.value = true;
+    error.value = null;
     try {
-      await supabase
-        .from("votes")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase
-        .from("voters")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase
-        .from("slates")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
-      await supabase
-        .from("elections")
-        .delete()
-        .neq("id", "00000000-0000-0000-0000-000000000000");
+      // 1. Invoca a função RPC atômica que executa TRUNCATE no Supabase
+      const { error: rpcErr } = await supabase.rpc("reset_all_election_data");
+
+      if (rpcErr) {
+        console.error("Erro na RPC reset_all_election_data:", rpcErr);
+        throw new Error(`Falha no Supabase ao zerar banco: ${rpcErr.message}`);
+      }
+
+      // 2. Limpa dados de bloqueio de voto por dispositivo no localStorage
+      if (typeof window !== "undefined" && window.localStorage) {
+        const keysToRemove: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key?.startsWith("voted_election_")) {
+            keysToRemove.push(key);
+          }
+        }
+        keysToRemove.forEach((k) => {
+          localStorage.removeItem(k);
+        });
+      }
 
       currentElection.value = null;
       slates.value = [];
       votes.value = [];
       voters.value = [];
       lastCalculatedHash.value = "";
+
+      // 3. Inicializa uma nova eleição limpa no Supabase
+      await loadActiveElection();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Erro ao resetar banco.";
+      error.value = msg;
+      throw new Error(msg);
     } finally {
       isLoading.value = false;
     }

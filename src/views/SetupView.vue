@@ -132,6 +132,7 @@ async function handleOpenElection() {
       <ElectionConfigForm
         :election="electionStore.currentElection"
         :disabled="!electionStore.isDraft && !!electionStore.currentElection"
+        :loading="electionStore.isLoading"
         @save="handleSaveElection"
       />
     </div>

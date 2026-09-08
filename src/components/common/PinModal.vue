@@ -20,7 +20,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   (e: "update:modelValue", value: boolean): void;
-  (e: "success"): void;
+  (e: "success", pin: string): void;
 }>();
 
 const enteredPin = ref("");
@@ -55,7 +55,7 @@ function handleClear() {
 
 function handleSubmit() {
   if (enteredPin.value === props.expectedPin) {
-    emit("success");
+    emit("success", enteredPin.value);
     emit("update:modelValue", false);
   } else {
     errorMessage.value = "PIN incorreto. Tente novamente.";

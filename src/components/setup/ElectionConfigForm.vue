@@ -14,6 +14,7 @@ import type { Election } from "~/domain/types";
 const props = defineProps<{
   election: Election | null;
   disabled?: boolean;
+  loading?: boolean;
 }>();
 
 const emit = defineEmits<(e: "save", data: Partial<Election>) => void>();
@@ -172,7 +173,14 @@ function handleSubmit() {
     </div>
 
     <div v-if="!disabled" class="flex justify-end pt-2">
-      <BaseButton type="submit" variant="primary" size="lg" class="px-8 py-3.5 text-base font-bold shadow-md cursor-pointer">
+      <BaseButton
+        type="submit"
+        variant="primary"
+        size="lg"
+        :loading="loading"
+        :disabled="disabled || loading"
+        class="px-8 py-3.5 text-base font-bold shadow-md cursor-pointer"
+      >
         <Save class="w-5 h-5 mr-2" />
         Salvar Configuração
       </BaseButton>

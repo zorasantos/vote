@@ -97,11 +97,14 @@ async function handleFileSelected(e: Event) {
   }
 }
 
+const resetPin = ref("1234");
+
 function handleResetClick() {
   showPinForReset.value = true;
 }
 
-function onPinSuccessForReset() {
+function onPinSuccessForReset(pin?: string) {
+  if (pin) resetPin.value = pin;
   showConfirmResetModal.value = true;
 }
 
@@ -237,7 +240,12 @@ async function handleConfirmReset() {
         <BaseButton variant="outline" size="md" @click="showConfirmResetModal = false">
           Cancelar
         </BaseButton>
-        <BaseButton variant="danger" size="md" @click="handleConfirmReset">
+        <BaseButton
+          variant="danger"
+          size="md"
+          :loading="electionStore.isLoading"
+          @click="handleConfirmReset"
+        >
           Sim, Apagar Tudo
         </BaseButton>
       </template>
