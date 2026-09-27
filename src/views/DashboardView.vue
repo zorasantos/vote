@@ -15,6 +15,7 @@ import BaseButton from "~/components/common/BaseButton.vue";
 import BaseModal from "~/components/common/BaseModal.vue";
 import PinModal from "~/components/common/PinModal.vue";
 import VotingQrCodeCard from "~/components/voting/VotingQrCodeCard.vue";
+import { APP_CONFIG } from "~/domain/constants";
 import { useElectionStore } from "~/store/electionStore";
 import { useUiStore } from "~/store/uiStore";
 
@@ -25,6 +26,7 @@ const uiStore = useUiStore();
 const isUnlocked = ref(false);
 const showPinModal = ref(false);
 const showConfirmCloseElectionModal = ref(false);
+const showClosePinModal = ref(false);
 const isClosing = ref(false);
 
 onMounted(() => {
@@ -57,11 +59,17 @@ function handleRequestCloseElection() {
   showConfirmCloseElectionModal.value = true;
 }
 
+function handleProceedToClosePin() {
+  showConfirmCloseElectionModal.value = false;
+  showClosePinModal.value = true;
+}
+
 async function handleConfirmCloseElection() {
   isClosing.value = true;
   try {
     await electionStore.closeElection();
-    showConfirmCloseElectionModal.value = false;
+    showClosePinModal.value = false;
+    uiStore.playBeep("confirm");
     uiStore.addToast(
       "success",
       "Pleito Encerrado com Sucesso!",
@@ -266,19 +274,28 @@ async function handleConfirmCloseElection() {
             variant="danger"
             size="md"
             :loading="isClosing"
-            @click="handleConfirmCloseElection"
+            @click="handleProceedToClosePin"
           >
-            <StopCircle class="w-4 h-4 mr-1" />
-            Confirmar e Encerrar Urna
+            <KeyRound class="w-4 h-4 mr-1" />
+            Avançar e Informar PIN
           </BaseButton>
         </template>
       </BaseModal>
     </div>
 
-    <!-- Modal de PIN do Mesário -->
+    <!-- Modal de PIN do Mesário (Desbloqueio Geral) -->
     <PinModal
       v-model="showPinModal"
       @success="handlePinSuccess"
+    />
+
+    <!-- Modal de PIN de Segurança para Encerramento Definitivo da Urna -->
+    <PinModal
+      v-model="showClosePinModal"
+      title="Autorização para Encerramento da Urna"
+      description="Digite o PIN de segurança do mesário para confirmar o fechamento definitivo da eleição."
+      :expected-pin="APP_CONFIG.defaultPin"
+      @success="handleConfirmCloseElection"
     />
   </div>
 </template>
