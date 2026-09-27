@@ -97,7 +97,7 @@ async function handleFileSelected(e: Event) {
   }
 }
 
-const resetPin = ref("1234");
+const resetPin = ref("9148");
 
 function handleResetClick() {
   showPinForReset.value = true;

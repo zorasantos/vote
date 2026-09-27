@@ -21,5 +21,5 @@ export const APP_CONFIG = {
   appName: "Urna Eletrônica da Mesa Diretora",
   version: "1.0.0",
   successCountdownSeconds: 3,
-  defaultPin: "1234", // PIN inicial padrão se o operador não definir outro
+  defaultPin: "9148", // PIN inicial padrão se o operador não definir outro
 } as const;

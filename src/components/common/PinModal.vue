@@ -9,12 +9,12 @@ const props = withDefaults(
     modelValue: boolean;
     title?: string;
     description?: string;
-    expectedPin?: string; // Padrão "1234"
+    expectedPin?: string; // Padrão "9148"
   }>(),
   {
     title: "Acesso do Mesário / Operador",
     description: "Digite o PIN operacional para continuar.",
-    expectedPin: "1234",
+    expectedPin: "9148",
   },
 );
 
